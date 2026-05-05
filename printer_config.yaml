@@ -13,7 +13,7 @@ alfajor:
 # === Impresion ===
 impresion:
   z_altura_mm: 0.5         # Altura Z de impresion sobre el alfajor
-  velocidad_impresion: 500 # mm/min (F value) durante extrusion XY
+  velocidad_impresion: 800 # mm/min (F value) durante extrusion XY
   velocidad_viaje: 3000     # mm/min durante movimientos sin extruir XY
   velocidad_z: 600          # mm/min para movimientos en Z 
   velocidad_primera_capa: 800  # mm/min para la primera linea
@@ -21,10 +21,10 @@ impresion:
 # === Extrusor ===
 extrusor:
   diametro_boquilla_mm: 1.5   # Diametro de la boquilla
-  flujo_e_por_mm: 0.55         # mm de E por cada mm de recorrido lineal 0.8
-  retraccion_mm: 14.0           # Distancia de retraccion entre trazos
+  flujo_e_por_mm: 0.5         # mm de E por cada mm de recorrido lineal 0.8
+  retraccion_mm: 54.0           # Distancia de retraccion entre trazos
   velocidad_retraccion: 8000   # mm/min para retraccion
-  desretraccion_mm: 15.0        # Distancia de desretraccion (prime)
+  desretraccion_mm: 55.0        # Distancia de desretraccion (prime)
   purga_inicial_mm: 120.0        # Purga antes de comenzar
   purga_pos_x: 0.0              # Posicion X para purga inicial
   purga_pos_y: 0.0              # Posicion Y para purga inicial
