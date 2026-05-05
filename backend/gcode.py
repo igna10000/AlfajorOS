@@ -217,6 +217,7 @@ class GCodeGenerator:
             g.e_total += PC.PURGA_INICIAL_MM
             g.raw(f"G1 E{g.e_total:.4f} F300")
             g.reset_extruder()
+            g.retracted = True  # Post-purga: considerar retraido para evitar E negativo
             g.blank()
 
         # Mover al centro del alfajor para empezar
@@ -333,7 +334,7 @@ class GCodeGenerator:
                 g.travel(x_start, y)
                 first = False
             else:
-                g.extrude_to(x_start, y)
+                g.travel(x_start, y)
             g.extrude_to(x_end, y)
 
     # --- Circulos concentricos ---
@@ -414,15 +415,18 @@ class GCodeGenerator:
 
     # --- Corazon ---
     def _p_corazon(self, g, grosor_pct):
-        r = self.radio * 0.85
+        r = self.radio
         puntos = 120
+        # La ecuacion parametrica del corazon tiene extension maxima ~17 unidades
+        # Normalizamos dividiendo por 17 para que el corazon llene el radio util
+        scale = r / 17.0
         coords = []
         for i in range(puntos + 1):
             t = math.radians(i * (360 / puntos))
             # Ecuacion parametrica del corazon
-            x = r * 0.5 * 16 * (math.sin(t) ** 3) / 16
-            y = -r * 0.5 * (13 * math.cos(t) - 5 * math.cos(2*t) -
-                            2 * math.cos(3*t) - math.cos(4*t)) / 16
+            x = scale * 16 * (math.sin(t) ** 3)
+            y = -scale * (13 * math.cos(t) - 5 * math.cos(2*t) -
+                          2 * math.cos(3*t) - math.cos(4*t))
             coords.append((self.cx + x, self.cy + y))
 
         g.travel(coords[0][0], coords[0][1])
@@ -489,7 +493,7 @@ class GCodeGenerator:
                 g.travel(x_s, y)
                 first = False
             else:
-                g.extrude_to(x_s, y)
+                g.travel(x_s, y)
             g.extrude_to(x_e, y)
 
     # --- Borde decorativo ---
@@ -502,7 +506,8 @@ class GCodeGenerator:
         g.travel(self.cx + r, self.cy)
         for i in range(1, puntos + 1):
             ang = math.radians(i * (360 / puntos))
-            ri = r + amplitud * math.sin(ang * 6)
+            ri = r - amplitud + amplitud * math.sin(ang * 6)
+            ri = min(ri, r)  # Nunca exceder el radio del alfajor
             x = self.cx + ri * math.cos(ang)
             y = self.cy + ri * math.sin(ang)
             g.extrude_to(x, y)

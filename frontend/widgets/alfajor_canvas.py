@@ -350,11 +350,15 @@ class AlfajorCanvas(QWidget):
 
     def _dibujar_crema_3d(self, painter, cx, cy, scale, tilt, progreso):
         """Dibuja la crema con volumen ENCIMA del alfajor."""
+        from backend.config import PrinterConfig as PC
         r = 35 * scale
         tilt_rad = math.radians(tilt)
         h_alfajor = 12 * scale * math.sin(tilt_rad)  # Misma altura que el alfajor
         ry = r * math.cos(tilt_rad) if tilt > 2 else r
-        radio_crema = r * 0.82
+        # Relacion radio util / radio alfajor (derivada de la config real)
+        radio_alfajor = PC.ALFAJOR_DIAMETRO_MM / 2
+        ratio = PC.ALFAJOR_RADIO_MM / radio_alfajor if radio_alfajor > 0 else 0.82
+        radio_crema = r * ratio
 
         grosor_linea = 3 + (self._grosor / 100) * 7
         crema_height = 5 * scale  # Grosor de la crema

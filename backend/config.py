@@ -88,16 +88,20 @@ class PrinterConfig:
         """Recarga la configuracion desde el YAML."""
         global _cfg
         _cfg = _load_yaml()
-        # Re-asignar todos los atributos
+        # === Alfajor ===
         cls.ALFAJOR_DIAMETRO_MM = _get(_cfg, "alfajor", "diametro_mm", default=70.0)
         cls.ALFAJOR_MARGEN_MM = _get(_cfg, "alfajor", "margen_mm", default=3.0)
         cls.ALFAJOR_CENTRO_X = _get(_cfg, "alfajor", "centro_x", default=110.0)
         cls.ALFAJOR_CENTRO_Y = _get(_cfg, "alfajor", "centro_y", default=110.0)
         cls.ALFAJOR_RADIO_MM = (cls.ALFAJOR_DIAMETRO_MM / 2) - cls.ALFAJOR_MARGEN_MM
+        # === Impresion ===
         cls.Z_ALTURA_MM = _get(_cfg, "impresion", "z_altura_mm", default=1.0)
         cls.VEL_IMPRESION = _get(_cfg, "impresion", "velocidad_impresion", default=1200)
         cls.VEL_VIAJE = _get(_cfg, "impresion", "velocidad_viaje", default=3000)
         cls.VEL_Z = _get(_cfg, "impresion", "velocidad_z", default=600)
+        cls.VEL_PRIMERA_CAPA = _get(_cfg, "impresion", "velocidad_primera_capa", default=800)
+        # === Extrusor ===
+        cls.BOQUILLA_MM = _get(_cfg, "extrusor", "diametro_boquilla_mm", default=3.0)
         cls.FLUJO_E_POR_MM = _get(_cfg, "extrusor", "flujo_e_por_mm", default=0.05)
         cls.RETRACCION_MM = _get(_cfg, "extrusor", "retraccion_mm", default=2.0)
         cls.VEL_RETRACCION = _get(_cfg, "extrusor", "velocidad_retraccion", default=1800)
@@ -106,10 +110,91 @@ class PrinterConfig:
         cls.PURGA_POS_X = _get(_cfg, "extrusor", "purga_pos_x", default=5.0)
         cls.PURGA_POS_Y = _get(_cfg, "extrusor", "purga_pos_y", default=5.0)
         cls.PURGA_POS_Z = _get(_cfg, "extrusor", "purga_pos_z", default=0.5)
+        # === Viaje ===
         cls.Z_HOP_MM = _get(_cfg, "viaje", "z_hop_mm", default=3.0)
         cls.POS_FINAL_X = _get(_cfg, "viaje", "pos_final_x", default=10.0)
         cls.POS_FINAL_Y = _get(_cfg, "viaje", "pos_final_y", default=10.0)
         cls.POS_FINAL_Z = _get(_cfg, "viaje", "pos_final_z", default=10.0)
+        # === Linea ===
+        cls.GROSOR_DEFAULT_MM = _get(_cfg, "linea", "grosor_default_mm", default=2.0)
+        cls.GROSOR_MIN_MM = _get(_cfg, "linea", "grosor_min_mm", default=0.5)
+        cls.GROSOR_MAX_MM = _get(_cfg, "linea", "grosor_max_mm", default=5.0)
+        # === Serial ===
+        cls.SERIAL_BAUDRATE = _get(_cfg, "serial", "baudrate", default=115200)
+        cls.SERIAL_SCAN_PATTERNS = _get(_cfg, "serial", "scan_patterns",
+                                        default=["/dev/ttyUSB*", "/dev/ttyACM*"])
+        cls.SERIAL_RECONNECT_MS = _get(_cfg, "serial", "reconnect_ms", default=5000)
+        cls.SERIAL_TIMEOUT_S = _get(_cfg, "serial", "timeout_s", default=2.0)
+
+    @classmethod
+    def save(cls):
+        """Guarda la configuracion actual al archivo YAML."""
+        data = {
+            'alfajor': {
+                'diametro_mm': float(cls.ALFAJOR_DIAMETRO_MM),
+                'margen_mm': float(cls.ALFAJOR_MARGEN_MM),
+                'centro_x': float(cls.ALFAJOR_CENTRO_X),
+                'centro_y': float(cls.ALFAJOR_CENTRO_Y),
+            },
+            'impresion': {
+                'z_altura_mm': float(cls.Z_ALTURA_MM),
+                'velocidad_impresion': int(cls.VEL_IMPRESION),
+                'velocidad_viaje': int(cls.VEL_VIAJE),
+                'velocidad_z': int(cls.VEL_Z),
+                'velocidad_primera_capa': int(cls.VEL_PRIMERA_CAPA),
+            },
+            'extrusor': {
+                'diametro_boquilla_mm': float(cls.BOQUILLA_MM),
+                'flujo_e_por_mm': float(cls.FLUJO_E_POR_MM),
+                'retraccion_mm': float(cls.RETRACCION_MM),
+                'velocidad_retraccion': int(cls.VEL_RETRACCION),
+                'desretraccion_mm': float(cls.DESRETRACCION_MM),
+                'purga_inicial_mm': float(cls.PURGA_INICIAL_MM),
+                'purga_pos_x': float(cls.PURGA_POS_X),
+                'purga_pos_y': float(cls.PURGA_POS_Y),
+                'purga_pos_z': float(cls.PURGA_POS_Z),
+            },
+            'viaje': {
+                'z_hop_mm': float(cls.Z_HOP_MM),
+                'pos_final_x': float(cls.POS_FINAL_X),
+                'pos_final_y': float(cls.POS_FINAL_Y),
+                'pos_final_z': float(cls.POS_FINAL_Z),
+            },
+            'linea': {
+                'grosor_default_mm': float(cls.GROSOR_DEFAULT_MM),
+                'grosor_min_mm': float(cls.GROSOR_MIN_MM),
+                'grosor_max_mm': float(cls.GROSOR_MAX_MM),
+            },
+            'serial': {
+                'baudrate': int(cls.SERIAL_BAUDRATE),
+                'scan_patterns': list(cls.SERIAL_SCAN_PATTERNS),
+                'reconnect_ms': int(cls.SERIAL_RECONNECT_MS),
+                'timeout_s': float(cls.SERIAL_TIMEOUT_S),
+            },
+        }
+        # Escribir con comentarios de cabecera
+        header = (
+            "# ============================================================\n"
+            "# AlfajorOS - Configuracion de Impresora\n"
+            "# Ender 3 Pro + Marlin - Extrusion de Crema en Frio\n"
+            "# ============================================================\n\n"
+        )
+        with open(_YAML_PATH, 'w') as f:
+            f.write(header)
+            # Escribir cada seccion con comentario
+            section_comments = {
+                'alfajor': '# === Alfajor ===',
+                'impresion': '# === Impresion ===',
+                'extrusor': '# === Extrusor ===',
+                'viaje': '# === Viaje ===',
+                'linea': '# === Linea de crema ===',
+                'serial': '# === Serial ===',
+            }
+            for key in ['alfajor', 'impresion', 'extrusor', 'viaje', 'linea', 'serial']:
+                f.write(f"{section_comments[key]}\n")
+                yaml.dump({key: data[key]}, f, default_flow_style=False,
+                          allow_unicode=True, sort_keys=False)
+                f.write("\n")
 
 
 class SystemConfig:

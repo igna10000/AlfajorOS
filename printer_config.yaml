@@ -5,41 +5,41 @@
 
 # === Alfajor ===
 alfajor:
-  diametro_mm: 84.0        # Diametro del alfajor
-  margen_mm: 3.0           # Margen interno (no imprimir en el borde)
-  centro_x: 110.0          # Posicion X del centro en la cama
-  centro_y: 110.0          # Posicion Y del centro en la cama
+  diametro_mm: 84.0
+  margen_mm: 3.0
+  centro_x: 145.0
+  centro_y: 150.0
 
 # === Impresion ===
 impresion:
-  z_altura_mm: 0.5         # Altura Z de impresion sobre el alfajor
-  velocidad_impresion: 800 # mm/min (F value) durante extrusion XY
-  velocidad_viaje: 3000     # mm/min durante movimientos sin extruir XY
-  velocidad_z: 600          # mm/min para movimientos en Z 
-  velocidad_primera_capa: 800  # mm/min para la primera linea
+  z_altura_mm: 0.1
+  velocidad_impresion: 800
+  velocidad_viaje: 3000
+  velocidad_z: 600
+  velocidad_primera_capa: 800
 
 # === Extrusor ===
 extrusor:
-  diametro_boquilla_mm: 1.5   # Diametro de la boquilla
-  flujo_e_por_mm: 0.5         # mm de E por cada mm de recorrido lineal 0.8
-  retraccion_mm: 54.0           # Distancia de retraccion entre trazos
-  velocidad_retraccion: 8000   # mm/min para retraccion
-  desretraccion_mm: 55.0        # Distancia de desretraccion (prime)
-  purga_inicial_mm: 120.0        # Purga antes de comenzar
-  purga_pos_x: 0.0              # Posicion X para purga inicial
-  purga_pos_y: 0.0              # Posicion Y para purga inicial
-  purga_pos_z: 10.5              # Posicion Z para purga inicial
+  diametro_boquilla_mm: 1.5
+  flujo_e_por_mm: 0.25
+  retraccion_mm: 63.0
+  velocidad_retraccion: 8400
+  desretraccion_mm: 54.0
+  purga_inicial_mm: 120.0
+  purga_pos_x: 0.0
+  purga_pos_y: 0.0
+  purga_pos_z: 10.5
 
 # === Viaje ===
 viaje:
-  z_hop_mm: 3.0                # Elevacion Z durante viajes sin extruir
-  pos_final_x: 1.0           # Posicion X de estacionamiento
-  pos_final_y: 1.0           # Posicion Y de estacionamiento
-  pos_final_z: 1.0           # Posicion Z de estacionamiento
+  z_hop_mm: 3.0
+  pos_final_x: 1.0
+  pos_final_y: 1.0
+  pos_final_z: 1.0
 
 # === Linea de crema ===
 linea:
-  grosor_default_mm: 2.0      # Grosor de linea por defecto
+  grosor_default_mm: 2.0
   grosor_min_mm: 0.5
   grosor_max_mm: 5.0
 
@@ -47,7 +47,8 @@ linea:
 serial:
   baudrate: 115200
   scan_patterns:
-    - "/dev/ttyUSB*"
-    - "/dev/ttyACM*"
+  - /dev/ttyUSB*
+  - /dev/ttyACM*
   reconnect_ms: 5000
   timeout_s: 2.0
+
