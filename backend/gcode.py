@@ -175,7 +175,7 @@ class GCodeGenerator:
         self.cx = PC.ALFAJOR_CENTRO_X
         self.cy = PC.ALFAJOR_CENTRO_Y
         self.radio = PC.ALFAJOR_RADIO_MM
-        self.z_print = PC.Z_ALTURA_MM
+        self.z_print = PC.Z_ALTURA_MM + PC.Z_OFFSET_MM
 
     def generar_completo(self, patron="", texto="", grosor_pct=50):
         """

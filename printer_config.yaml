@@ -12,7 +12,8 @@ alfajor:
 
 # === Impresion ===
 impresion:
-  z_altura_mm: -10.0
+  z_altura_mm: 0.2
+  z_offset_mm: -10.0
   velocidad_impresion: 800
   velocidad_viaje: 3000
   velocidad_z: 600

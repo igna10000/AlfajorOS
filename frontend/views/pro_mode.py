@@ -178,14 +178,16 @@ class ProModeWindow(QMainWindow):
         grid = QGridLayout(grp)
 
         self._add_double_spin(grid, 0, "Altura Z (mm):", "z_altura",
-                              0.1, 20.0, 0.1, " mm")
-        self._add_int_spin(grid, 1, "Vel. impresión (mm/min):", "vel_impresion",
+                              0.0, 20.0, 0.1, " mm")
+        self._add_double_spin(grid, 1, "Offset Z (mm):", "z_offset",
+                              -50.0, 50.0, 0.5, " mm")
+        self._add_int_spin(grid, 2, "Vel. impresión (mm/min):", "vel_impresion",
                            100, 5000, 50, " mm/min")
-        self._add_int_spin(grid, 2, "Vel. viaje (mm/min):", "vel_viaje",
+        self._add_int_spin(grid, 3, "Vel. viaje (mm/min):", "vel_viaje",
                            500, 10000, 100, " mm/min")
-        self._add_int_spin(grid, 3, "Vel. Z (mm/min):", "vel_z",
+        self._add_int_spin(grid, 4, "Vel. Z (mm/min):", "vel_z",
                            100, 3000, 50, " mm/min")
-        self._add_int_spin(grid, 4, "Vel. primera capa (mm/min):", "vel_primera_capa",
+        self._add_int_spin(grid, 5, "Vel. primera capa (mm/min):", "vel_primera_capa",
                            100, 5000, 50, " mm/min")
 
         layout.addWidget(grp)
@@ -386,6 +388,7 @@ class ProModeWindow(QMainWindow):
             "alfajor_centro_x": PC.ALFAJOR_CENTRO_X,
             "alfajor_centro_y": PC.ALFAJOR_CENTRO_Y,
             "z_altura": PC.Z_ALTURA_MM,
+            "z_offset": PC.Z_OFFSET_MM,
             "vel_impresion": PC.VEL_IMPRESION,
             "vel_viaje": PC.VEL_VIAJE,
             "vel_z": PC.VEL_Z,
@@ -423,6 +426,7 @@ class ProModeWindow(QMainWindow):
         PC.ALFAJOR_CENTRO_Y = self._spinboxes["alfajor_centro_y"].value()
         PC.ALFAJOR_RADIO_MM = (PC.ALFAJOR_DIAMETRO_MM / 2) - PC.ALFAJOR_MARGEN_MM
         PC.Z_ALTURA_MM = self._spinboxes["z_altura"].value()
+        PC.Z_OFFSET_MM = self._spinboxes["z_offset"].value()
         PC.VEL_IMPRESION = self._spinboxes["vel_impresion"].value()
         PC.VEL_VIAJE = self._spinboxes["vel_viaje"].value()
         PC.VEL_Z = self._spinboxes["vel_z"].value()
