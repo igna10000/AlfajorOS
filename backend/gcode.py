@@ -204,10 +204,11 @@ class GCodeGenerator:
         g.reset_extruder()
         g.blank()
 
-        # Subir y posicionar
-        g.move_z(self.z_print + PC.Z_HOP_MM)
-        g.raw(f"G0 X{self.cx:.1f} Y{self.cy:.1f} F{PC.VEL_VIAJE}")
-        g.move_z(self.z_print)
+        # Mover a posicion de purga
+        g.comment("Posicionando para purga")
+        g.move_z(PC.PURGA_POS_Z + PC.Z_HOP_MM)
+        g.raw(f"G0 X{PC.PURGA_POS_X:.1f} Y{PC.PURGA_POS_Y:.1f} F{PC.VEL_VIAJE}")
+        g.move_z(PC.PURGA_POS_Z)
         g.blank()
 
         # Purga
@@ -217,6 +218,13 @@ class GCodeGenerator:
             g.raw(f"G1 E{g.e_total:.4f} F300")
             g.reset_extruder()
             g.blank()
+
+        # Mover al centro del alfajor para empezar
+        g.comment("Posicionando en centro del alfajor")
+        g.move_z(self.z_print + PC.Z_HOP_MM)
+        g.raw(f"G0 X{self.cx:.1f} Y{self.cy:.1f} F{PC.VEL_VIAJE}")
+        g.move_z(self.z_print)
+        g.blank()
 
         # === Marca inicio de dibujo ===
         drawing_start = g.line_count

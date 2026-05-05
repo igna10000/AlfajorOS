@@ -368,6 +368,7 @@ class ProModeWindow(QMainWindow):
         self.txt_gcode.setFont(QFont("Monospace", 10))
         self.txt_gcode.setStyleSheet(
             "background-color: #1e1e1e; color: #00ff00; border: 1px solid #555;")
+        from backend.config import PrinterConfig as PC
         self.txt_gcode.setPlainText(
             "; === G-Code Extrusora de Crema ===\n"
             "; Proyecto de Grado - Alfajores\n"
@@ -379,13 +380,13 @@ class ProModeWindow(QMainWindow):
             "G92 E0       ; Reset extrusor\n"
             ";\n"
             "; === Purga inicial ===\n"
-            "G1 X5 Y5 F1500\n"
+            f"G1 X{PC.PURGA_POS_X} Y{PC.PURGA_POS_Y} Z{PC.PURGA_POS_Z} F1500\n"
             "G1 E5 F300   ; Purgar crema\n"
             "G92 E0       ; Reset extrusor\n"
             ";\n"
             "; === Patron espiral sobre alfajor ===\n"
             "G1 Z2 F500   ; Bajar a altura de crema\n"
-            "G1 X35 Y35 F1000 ; Centro del alfajor\n"
+            f"G1 X{PC.ALFAJOR_CENTRO_X} Y{PC.ALFAJOR_CENTRO_Y} F1000 ; Centro del alfajor\n"
             "G2 X45 Y35 I5 J0 E3 F600 ; Espiral 1\n"
             "G2 X55 Y35 I5 J0 E6 F600 ; Espiral 2\n"
             "G2 X25 Y35 I-15 J0 E12 F600 ; Espiral 3\n"

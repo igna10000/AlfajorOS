@@ -5,34 +5,37 @@
 
 # === Alfajor ===
 alfajor:
-  diametro_mm: 70.0        # Diametro del alfajor
+  diametro_mm: 84.0        # Diametro del alfajor
   margen_mm: 3.0           # Margen interno (no imprimir en el borde)
   centro_x: 110.0          # Posicion X del centro en la cama
   centro_y: 110.0          # Posicion Y del centro en la cama
 
 # === Impresion ===
 impresion:
-  z_altura_mm: 1.0         # Altura Z de impresion sobre el alfajor
-  velocidad_impresion: 1200 # mm/min (F value) durante extrusion XY
+  z_altura_mm: 0.5         # Altura Z de impresion sobre el alfajor
+  velocidad_impresion: 500 # mm/min (F value) durante extrusion XY
   velocidad_viaje: 3000     # mm/min durante movimientos sin extruir XY
   velocidad_z: 600          # mm/min para movimientos en Z 
   velocidad_primera_capa: 800  # mm/min para la primera linea
 
 # === Extrusor ===
 extrusor:
-  diametro_boquilla_mm: 3.0   # Diametro de la boquilla
-  flujo_e_por_mm: 0.05         # mm de E por cada mm de recorrido lineal
-  retraccion_mm: 2.0           # Distancia de retraccion entre trazos
-  velocidad_retraccion: 1800   # mm/min para retraccion
-  desretraccion_mm: 2.0        # Distancia de desretraccion (prime)
-  purga_inicial_mm: 5.0        # Purga antes de comenzar
+  diametro_boquilla_mm: 1.5   # Diametro de la boquilla
+  flujo_e_por_mm: 0.62         # mm de E por cada mm de recorrido lineal 0.8
+  retraccion_mm: 8.0           # Distancia de retraccion entre trazos
+  velocidad_retraccion: 8000   # mm/min para retraccion
+  desretraccion_mm: 15.0        # Distancia de desretraccion (prime)
+  purga_inicial_mm: 120.0        # Purga antes de comenzar
+  purga_pos_x: 0.0              # Posicion X para purga inicial
+  purga_pos_y: 0.0              # Posicion Y para purga inicial
+  purga_pos_z: 10.5              # Posicion Z para purga inicial
 
 # === Viaje ===
 viaje:
   z_hop_mm: 3.0                # Elevacion Z durante viajes sin extruir
-  pos_final_x: 10.0           # Posicion X de estacionamiento
-  pos_final_y: 10.0           # Posicion Y de estacionamiento
-  pos_final_z: 10.0           # Posicion Z de estacionamiento
+  pos_final_x: 1.0           # Posicion X de estacionamiento
+  pos_final_y: 1.0           # Posicion Y de estacionamiento
+  pos_final_z: 1.0           # Posicion Z de estacionamiento
 
 # === Linea de crema ===
 linea:

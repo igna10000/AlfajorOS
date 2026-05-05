@@ -61,6 +61,9 @@ class PrinterConfig:
     VEL_RETRACCION = _get(_cfg, "extrusor", "velocidad_retraccion", default=1800)
     DESRETRACCION_MM = _get(_cfg, "extrusor", "desretraccion_mm", default=2.0)
     PURGA_INICIAL_MM = _get(_cfg, "extrusor", "purga_inicial_mm", default=5.0)
+    PURGA_POS_X = _get(_cfg, "extrusor", "purga_pos_x", default=5.0)
+    PURGA_POS_Y = _get(_cfg, "extrusor", "purga_pos_y", default=5.0)
+    PURGA_POS_Z = _get(_cfg, "extrusor", "purga_pos_z", default=0.5)
 
     # === Viaje ===
     Z_HOP_MM = _get(_cfg, "viaje", "z_hop_mm", default=3.0)
@@ -99,6 +102,10 @@ class PrinterConfig:
         cls.RETRACCION_MM = _get(_cfg, "extrusor", "retraccion_mm", default=2.0)
         cls.VEL_RETRACCION = _get(_cfg, "extrusor", "velocidad_retraccion", default=1800)
         cls.DESRETRACCION_MM = _get(_cfg, "extrusor", "desretraccion_mm", default=2.0)
+        cls.PURGA_INICIAL_MM = _get(_cfg, "extrusor", "purga_inicial_mm", default=5.0)
+        cls.PURGA_POS_X = _get(_cfg, "extrusor", "purga_pos_x", default=5.0)
+        cls.PURGA_POS_Y = _get(_cfg, "extrusor", "purga_pos_y", default=5.0)
+        cls.PURGA_POS_Z = _get(_cfg, "extrusor", "purga_pos_z", default=0.5)
         cls.Z_HOP_MM = _get(_cfg, "viaje", "z_hop_mm", default=3.0)
         cls.POS_FINAL_X = _get(_cfg, "viaje", "pos_final_x", default=10.0)
         cls.POS_FINAL_Y = _get(_cfg, "viaje", "pos_final_y", default=10.0)
