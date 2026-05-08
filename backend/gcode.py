@@ -4,67 +4,14 @@
 Generador de G-Code - Proyecto de Grado
 Genera G-Code a escala 1:1 para patrones de crema sobre alfajores.
 Coordenadas centradas en (centro_x, centro_y) de la cama de impresion.
+
+Usa PathGenerator para obtener las coordenadas de los patrones,
+garantizando que el G-Code generado coincida con la previsualizacion.
 """
 
 import math
 from backend.config import PrinterConfig as PC
-
-
-# ============================================================
-# Stroke Font - Coordenadas de trazos para cada caracter
-# Cada caracter es una lista de polylines (segmentos continuos)
-# Coordenadas normalizadas en un grid de 0-1 (ancho) x 0-1 (alto)
-# ============================================================
-
-STROKE_FONT = {
-    'A': [[(0,1),(0.5,0),(1,1)], [(0.2,0.6),(0.8,0.6)]],
-    'B': [[(0,1),(0,0),(0.7,0),(1,0.15),(1,0.35),(0.7,0.5),(0,0.5)],
-          [(0.7,0.5),(1,0.65),(1,0.85),(0.7,1),(0,1)]],
-    'C': [[(1,0.15),(0.7,0),(0.3,0),(0,0.15),(0,0.85),(0.3,1),(0.7,1),(1,0.85)]],
-    'D': [[(0,0),(0,1),(0.6,1),(1,0.75),(1,0.25),(0.6,0),(0,0)]],
-    'E': [[(1,0),(0,0),(0,0.5),(0.7,0.5),(0,0.5),(0,1),(1,1)]],
-    'F': [[(1,0),(0,0),(0,0.5),(0.7,0.5),(0,0.5),(0,1)]],
-    'G': [[(1,0.15),(0.7,0),(0.3,0),(0,0.15),(0,0.85),(0.3,1),(0.7,1),(1,0.85),(1,0.5),(0.5,0.5)]],
-    'H': [[(0,0),(0,1)], [(1,0),(1,1)], [(0,0.5),(1,0.5)]],
-    'I': [[(0.3,0),(0.7,0)], [(0.5,0),(0.5,1)], [(0.3,1),(0.7,1)]],
-    'J': [[(0.3,0),(0.7,0)], [(0.5,0),(0.5,0.85),(0.3,1),(0.1,0.85)]],
-    'K': [[(0,0),(0,1)], [(1,0),(0,0.5),(1,1)]],
-    'L': [[(0,0),(0,1),(1,1)]],
-    'M': [[(0,1),(0,0),(0.5,0.4),(1,0),(1,1)]],
-    'N': [[(0,1),(0,0),(1,1),(1,0)]],
-    'O': [[(0.3,0),(0,0.2),(0,0.8),(0.3,1),(0.7,1),(1,0.8),(1,0.2),(0.7,0),(0.3,0)]],
-    'P': [[(0,1),(0,0),(0.7,0),(1,0.15),(1,0.35),(0.7,0.5),(0,0.5)]],
-    'Q': [[(0.3,0),(0,0.2),(0,0.8),(0.3,1),(0.7,1),(1,0.8),(1,0.2),(0.7,0),(0.3,0)],
-          [(0.6,0.7),(1,1)]],
-    'R': [[(0,1),(0,0),(0.7,0),(1,0.15),(1,0.35),(0.7,0.5),(0,0.5)],
-          [(0.5,0.5),(1,1)]],
-    'S': [[(1,0.15),(0.7,0),(0.3,0),(0,0.15),(0,0.35),(0.3,0.5),
-           (0.7,0.5),(1,0.65),(1,0.85),(0.7,1),(0.3,1),(0,0.85)]],
-    'T': [[(0,0),(1,0)], [(0.5,0),(0.5,1)]],
-    'U': [[(0,0),(0,0.85),(0.3,1),(0.7,1),(1,0.85),(1,0)]],
-    'V': [[(0,0),(0.5,1),(1,0)]],
-    'W': [[(0,0),(0.25,1),(0.5,0.5),(0.75,1),(1,0)]],
-    'X': [[(0,0),(1,1)], [(1,0),(0,1)]],
-    'Y': [[(0,0),(0.5,0.5),(1,0)], [(0.5,0.5),(0.5,1)]],
-    'Z': [[(0,0),(1,0),(0,1),(1,1)]],
-    '0': [[(0.3,0),(0,0.2),(0,0.8),(0.3,1),(0.7,1),(1,0.8),(1,0.2),(0.7,0),(0.3,0)]],
-    '1': [[(0.2,0.2),(0.5,0)], [(0.5,0),(0.5,1)], [(0.2,1),(0.8,1)]],
-    '2': [[(0,0.2),(0.3,0),(0.7,0),(1,0.2),(1,0.4),(0,1),(1,1)]],
-    '3': [[(0,0.15),(0.3,0),(0.7,0),(1,0.2),(1,0.35),(0.7,0.5),(1,0.65),(1,0.8),(0.7,1),(0.3,1),(0,0.85)]],
-    '4': [[(0,0),(0,0.5),(1,0.5)], [(0.7,0),(0.7,1)]],
-    '5': [[(1,0),(0,0),(0,0.45),(0.7,0.45),(1,0.6),(1,0.85),(0.7,1),(0.3,1),(0,0.85)]],
-    '6': [[(0.7,0),(0.3,0),(0,0.2),(0,0.85),(0.3,1),(0.7,1),(1,0.85),(1,0.65),(0.7,0.5),(0,0.5)]],
-    '7': [[(0,0),(1,0),(0.3,1)]],
-    '8': [[(0.3,0),(0,0.15),(0,0.35),(0.3,0.5),(0.7,0.5),(1,0.65),(1,0.85),(0.7,1),(0.3,1),(0,0.85),(0,0.65),(0.3,0.5),(0.7,0.5),(1,0.35),(1,0.15),(0.7,0),(0.3,0)]],
-    '9': [[(1,0.5),(0.7,0.5),(0.3,0.5),(0,0.35),(0,0.15),(0.3,0),(0.7,0),(1,0.15),(1,0.8),(0.7,1),(0.3,1)]],
-    ' ': [],
-    '.': [[(0.4,0.9),(0.6,0.9),(0.6,1),(0.4,1),(0.4,0.9)]],
-    ',': [[(0.5,0.85),(0.5,1),(0.3,1.15)]],
-    '-': [[(0.2,0.5),(0.8,0.5)]],
-    '!': [[(0.5,0),(0.5,0.7)], [(0.45,0.9),(0.55,0.9),(0.55,1),(0.45,1),(0.45,0.9)]],
-    '?': [[(0.1,0.15),(0.3,0),(0.7,0),(0.9,0.15),(0.9,0.35),(0.5,0.55),(0.5,0.7)],
-          [(0.45,0.9),(0.55,0.9),(0.55,1),(0.45,1),(0.45,0.9)]],
-}
+from backend.path_generator import PathGenerator
 
 
 class GCodeBuilder:
@@ -230,16 +177,20 @@ class GCodeGenerator:
         # === Marca inicio de dibujo ===
         drawing_start = g.line_count
 
-        # Patron
+        # Patron — usa PathGenerator
         if patron:
             g.comment(f"=== Patron: {patron} ===")
-            self._generar_patron(g, patron, grosor_pct)
+            pg = PathGenerator(self.radio, grosor_pct)
+            path = pg.generar(patron)
+            self._path_to_gcode(g, path)
             g.blank()
 
-        # Texto
+        # Texto — usa PathGenerator
         if texto:
             g.comment(f"=== Texto: {texto} ===")
-            self._generar_texto(g, texto)
+            pg = PathGenerator(self.radio, grosor_pct)
+            path_texto = pg.generar_texto(texto)
+            self._path_to_gcode(g, path_texto)
             g.blank()
 
         # === Marca fin de dibujo ===
@@ -258,303 +209,23 @@ class GCodeGenerator:
 
         return g.build(), metadata
 
-    # ========================================================
-    # Patrones
-    # ========================================================
-
-    def _generar_patron(self, g, patron, grosor_pct):
-        """Despacha al generador correcto segun el patron."""
-        p = patron.lower()
-        if "espiral" in p:
-            self._p_espiral(g, grosor_pct)
-        elif "zigzag" in p:
-            self._p_zigzag(g, grosor_pct)
-        elif "circulo" in p:
-            self._p_circulos(g, grosor_pct)
-        elif "rejilla" in p:
-            self._p_rejilla(g, grosor_pct)
-        elif "estrella" in p:
-            self._p_estrella(g, grosor_pct)
-        elif "corazon" in p:
-            self._p_corazon(g, grosor_pct)
-        elif "onda" in p:
-            self._p_ondas(g, grosor_pct)
-        elif "relleno" in p or "completo" in p:
-            self._p_relleno(g, grosor_pct)
-        elif "borde" in p:
-            self._p_borde(g, grosor_pct)
-        else:
-            self._p_espiral(g, grosor_pct)
-
-    def _grosor_mm(self, grosor_pct):
-        """Convierte porcentaje de grosor a mm de separacion entre lineas."""
-        return PC.GROSOR_MIN_MM + (grosor_pct / 100) * (PC.GROSOR_MAX_MM - PC.GROSOR_MIN_MM)
-
-    # --- Espiral ---
-    def _p_espiral(self, g, grosor_pct, vueltas=None):
-        r = self.radio
-        grosor = self._grosor_mm(grosor_pct)
-        if vueltas is None:
-            vueltas = max(2, int(r / grosor))
-
-        pasos = vueltas * 36
-        g.travel(self.cx, self.cy)
-
-        for i in range(1, pasos + 1):
-            angulo = math.radians(i * 10)
-            radio_i = (i / pasos) * r
-            x = self.cx + radio_i * math.cos(angulo)
-            y = self.cy + radio_i * math.sin(angulo)
-            g.extrude_to(x, y)
-
-    # --- Zigzag ---
-    def _p_zigzag(self, g, grosor_pct):
-        r = self.radio
-        grosor = self._grosor_mm(grosor_pct)
-        lineas = max(3, int((r * 2) / grosor))
-        paso = (r * 2) / lineas
-
-        first = True
-        for i in range(lineas + 1):
-            y_off = -r + i * paso
-            # Calcular ancho del cordon a esta altura (circulo)
-            if abs(y_off) > r:
+    def _path_to_gcode(self, g, path):
+        """
+        Convierte un path de segmentos a comandos G-Code.
+        Cada segmento: primer punto = travel, resto = extrude.
+        Coordenadas del path estan centradas en (0,0),
+        se trasladan a (cx, cy) del alfajor en la cama.
+        """
+        for segment in path:
+            if len(segment) < 2:
                 continue
-            half_w = math.sqrt(r * r - y_off * y_off)
-
-            if i % 2 == 0:
-                x_start = self.cx - half_w
-                x_end = self.cx + half_w
-            else:
-                x_start = self.cx + half_w
-                x_end = self.cx - half_w
-
-            y = self.cy + y_off
-            if first:
-                g.travel(x_start, y)
-                first = False
-            else:
-                g.travel(x_start, y)
-            g.extrude_to(x_end, y)
-
-    # --- Circulos concentricos ---
-    def _p_circulos(self, g, grosor_pct):
-        r = self.radio
-        grosor = self._grosor_mm(grosor_pct)
-        num_circulos = max(2, int(r / grosor))
-
-        for c in range(num_circulos, 0, -1):
-            rc = r * (c / num_circulos)
-            puntos = max(24, int(rc * 2))
-            x0 = self.cx + rc
-            y0 = self.cy
+            # Travel al primer punto del segmento
+            x0 = self.cx + segment[0][0]
+            y0 = self.cy + segment[0][1]
             g.travel(x0, y0)
-            for i in range(1, puntos + 1):
-                ang = math.radians(i * (360 / puntos))
-                x = self.cx + rc * math.cos(ang)
-                y = self.cy + rc * math.sin(ang)
-                g.extrude_to(x, y)
-
-    # --- Rejilla ---
-    def _p_rejilla(self, g, grosor_pct):
-        r = self.radio
-        grosor = self._grosor_mm(grosor_pct)
-        lineas = max(3, int((r * 2) / grosor))
-        paso = (r * 2) / lineas
-
-        # Lineas horizontales
-        for i in range(lineas + 1):
-            y_off = -r + i * paso
-            if abs(y_off) > r:
-                continue
-            half_w = math.sqrt(r * r - y_off * y_off)
-            y = self.cy + y_off
-            x1 = self.cx - half_w
-            x2 = self.cx + half_w
-            if i % 2 == 0:
-                g.travel(x1, y)
-                g.extrude_to(x2, y)
-            else:
-                g.travel(x2, y)
-                g.extrude_to(x1, y)
-
-        # Lineas verticales
-        for i in range(lineas + 1):
-            x_off = -r + i * paso
-            if abs(x_off) > r:
-                continue
-            half_h = math.sqrt(r * r - x_off * x_off)
-            x = self.cx + x_off
-            y1 = self.cy - half_h
-            y2 = self.cy + half_h
-            if i % 2 == 0:
-                g.travel(x, y1)
-                g.extrude_to(x, y2)
-            else:
-                g.travel(x, y2)
-                g.extrude_to(x, y1)
-
-    # --- Estrella ---
-    def _p_estrella(self, g, grosor_pct, puntas=5):
-        r = self.radio
-        r_inner = r * 0.4
-        total = puntas * 2
-        vertices = []
-        for i in range(total):
-            ang = math.radians(i * (360 / total) - 90)
-            ri = r if (i % 2 == 0) else r_inner
-            vertices.append((
-                self.cx + ri * math.cos(ang),
-                self.cy + ri * math.sin(ang)
-            ))
-
-        g.travel(vertices[0][0], vertices[0][1])
-        for vx, vy in vertices[1:]:
-            g.extrude_to(vx, vy)
-        g.extrude_to(vertices[0][0], vertices[0][1])
-
-    # --- Corazon ---
-    def _p_corazon(self, g, grosor_pct):
-        r = self.radio
-        puntos = 120
-        # La ecuacion parametrica del corazon tiene extension maxima ~17 unidades
-        # Normalizamos dividiendo por 17 para que el corazon llene el radio util
-        scale = r / 17.0
-        coords = []
-        for i in range(puntos + 1):
-            t = math.radians(i * (360 / puntos))
-            # Ecuacion parametrica del corazon
-            x = scale * 16 * (math.sin(t) ** 3)
-            y = -scale * (13 * math.cos(t) - 5 * math.cos(2*t) -
-                          2 * math.cos(3*t) - math.cos(4*t))
-            coords.append((self.cx + x, self.cy + y))
-
-        g.travel(coords[0][0], coords[0][1])
-        for x, y in coords[1:]:
-            g.extrude_to(x, y)
-
-    # --- Ondas ---
-    def _p_ondas(self, g, grosor_pct):
-        r = self.radio
-        grosor = self._grosor_mm(grosor_pct)
-        lineas = max(3, int((r * 2) / grosor))
-        paso = (r * 2) / lineas
-        amplitud = paso * 0.4
-
-        first = True
-        for i in range(lineas + 1):
-            y_off = -r + i * paso
-            if abs(y_off) > r:
-                continue
-            half_w = math.sqrt(r * r - y_off * y_off)
-            y_base = self.cy + y_off
-
-            num_seg = max(10, int(half_w * 2 / 2))
-            seg_w = (half_w * 2) / num_seg
-            direction = 1 if i % 2 == 0 else -1
-
-            start_x = self.cx - half_w if direction == 1 else self.cx + half_w
-            if first:
-                g.travel(start_x, y_base)
-                first = False
-            else:
-                g.travel(start_x, y_base)
-
-            for s in range(1, num_seg + 1):
-                frac = s / num_seg
-                x = self.cx - half_w + frac * half_w * 2
-                if direction == -1:
-                    x = self.cx + half_w - frac * half_w * 2
-                y = y_base + amplitud * math.sin(frac * math.pi * 4)
-                g.extrude_to(x, y)
-
-    # --- Relleno completo ---
-    def _p_relleno(self, g, grosor_pct):
-        """Relleno en zigzag denso."""
-        r = self.radio
-        grosor = self._grosor_mm(grosor_pct)
-        paso = max(0.8, grosor * 0.5)
-        lineas = int((r * 2) / paso)
-
-        first = True
-        for i in range(lineas + 1):
-            y_off = -r + i * paso
-            if abs(y_off) >= r:
-                continue
-            half_w = math.sqrt(r * r - y_off * y_off)
-            y = self.cy + y_off
-
-            if i % 2 == 0:
-                x_s, x_e = self.cx - half_w, self.cx + half_w
-            else:
-                x_s, x_e = self.cx + half_w, self.cx - half_w
-
-            if first:
-                g.travel(x_s, y)
-                first = False
-            else:
-                g.travel(x_s, y)
-            g.extrude_to(x_e, y)
-
-    # --- Borde decorativo ---
-    def _p_borde(self, g, grosor_pct):
-        """Circulo exterior con ondulacion."""
-        r = self.radio
-        puntos = 72
-        amplitud = 2.0
-
-        g.travel(self.cx + r, self.cy)
-        for i in range(1, puntos + 1):
-            ang = math.radians(i * (360 / puntos))
-            ri = r - amplitud + amplitud * math.sin(ang * 6)
-            ri = min(ri, r)  # Nunca exceder el radio del alfajor
-            x = self.cx + ri * math.cos(ang)
-            y = self.cy + ri * math.sin(ang)
-            g.extrude_to(x, y)
-
-    # ========================================================
-    # Texto
-    # ========================================================
-
-    def _generar_texto(self, g, texto):
-        """Genera G-Code para texto usando stroke font."""
-        if not texto:
-            return
-
-        texto = texto.upper()
-        # Calcular dimensiones
-        char_h = self.radio * 0.5
-        char_w = char_h * 0.65
-        spacing = char_w * 0.15
-        total_w = len(texto) * char_w + (len(texto) - 1) * spacing
-        # Limitar al diametro
-        if total_w > self.radio * 1.6:
-            scale = (self.radio * 1.6) / total_w
-            char_w *= scale
-            char_h *= scale
-            spacing *= scale
-            total_w = len(texto) * char_w + (len(texto) - 1) * spacing
-
-        start_x = self.cx - total_w / 2
-        start_y = self.cy - char_h / 2
-
-        for ci, ch in enumerate(texto):
-            ox = start_x + ci * (char_w + spacing)
-            oy = start_y
-
-            polylines = STROKE_FONT.get(ch, [])
-            for polyline in polylines:
-                if len(polyline) < 2:
-                    continue
-                # Primer punto = travel
-                px = ox + polyline[0][0] * char_w
-                py = oy + polyline[0][1] * char_h
-                g.travel(px, py)
-                # Resto = extrude
-                for pt in polyline[1:]:
-                    px = ox + pt[0] * char_w
-                    py = oy + pt[1] * char_h
-                    g.extrude_to(px, py)
+            # Extrude por el resto del segmento
+            for px, py in segment[1:]:
+                g.extrude_to(self.cx + px, self.cy + py)
 
 
 # ============================================================

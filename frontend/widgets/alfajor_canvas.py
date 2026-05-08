@@ -353,17 +353,15 @@ class AlfajorCanvas(QWidget):
         from backend.config import PrinterConfig as PC
         r = 35 * scale
         tilt_rad = math.radians(tilt)
-        h_alfajor = 12 * scale * math.sin(tilt_rad)  # Misma altura que el alfajor
+        h_alfajor = 12 * scale * math.sin(tilt_rad)
         ry = r * math.cos(tilt_rad) if tilt > 2 else r
-        # Relacion radio util / radio alfajor (derivada de la config real)
         radio_alfajor = PC.ALFAJOR_DIAMETRO_MM / 2
         ratio = PC.ALFAJOR_RADIO_MM / radio_alfajor if radio_alfajor > 0 else 0.82
         radio_crema = r * ratio
 
         grosor_linea = 3 + (self._grosor / 100) * 7
-        crema_height = 5 * scale  # Grosor de la crema
+        crema_height = 5 * scale
 
-        # La crema se dibuja ENCIMA de la cara superior del alfajor
         alfajor_top_cy = cy - h_alfajor / 2
         crema_surface_cy = alfajor_top_cy - crema_height * math.sin(tilt_rad)
 
@@ -375,12 +373,11 @@ class AlfajorCanvas(QWidget):
             t.translate(-cx, -crema_surface_cy)
             painter.setTransform(t, True)
 
-        # === Capas 3D: sombra debajo para dar volumen (crema → alfajor) ===
+        # Capas 3D de sombra
         if tilt > 2:
             num_layers = 6
             for layer in range(num_layers, 0, -1):
                 frac = layer / num_layers
-                # Offset va HACIA ABAJO desde la superficie de la crema
                 offset = crema_height * frac * 2
                 alpha = int(40 + frac * 100)
                 thickness = grosor_linea + 3 - layer * 0.3
@@ -389,46 +386,42 @@ class AlfajorCanvas(QWidget):
                                  Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
                 painter.setPen(sombra_pen)
                 painter.setBrush(Qt.NoBrush)
-                self._dibujar_patron(painter, cx, crema_surface_cy + offset,
-                                    radio_crema, progreso)
+                self._dibujar_path(painter, cx, crema_surface_cy + offset,
+                                   radio_crema, progreso)
 
-        # Capa principal de crema (superficie superior)
+        # Capa principal de crema
         color_crema = QColor(255, 245, 220, 245)
         pen = QPen(color_crema, grosor_linea, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
         painter.setPen(pen)
         painter.setBrush(Qt.NoBrush)
-        self._dibujar_patron(painter, cx, crema_surface_cy, radio_crema, progreso)
+        self._dibujar_path(painter, cx, crema_surface_cy, radio_crema, progreso)
 
-        # Highlight (brillo en la parte más alta)
+        # Highlight
         highlight_pen = QPen(QColor(255, 255, 252, 110), max(2, grosor_linea * 0.5),
                            Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
         painter.setPen(highlight_pen)
-        self._dibujar_patron(painter, cx, crema_surface_cy - 1.5, radio_crema, progreso)
+        self._dibujar_path(painter, cx, crema_surface_cy - 1.5, radio_crema, progreso)
 
         painter.restore()
 
     def _dibujar_texto_3d(self, painter, cx, cy, scale, tilt, progreso):
-        """Dibuja texto con extrusión 3D ENCIMA del alfajor."""
+        """Dibuja texto con extrusión 3D usando STROKE_FONT (igual que G-Code)."""
         if not self._texto:
             return
+
+        from backend.config import PrinterConfig as PC
+        from backend.path_generator import PathGenerator
 
         r = 35 * scale
         tilt_rad = math.radians(tilt)
         h_alfajor = 12 * scale * math.sin(tilt_rad)
         ry = r * math.cos(tilt_rad) if tilt > 2 else r
         crema_height = 5 * scale
-        ancho_max = r * 0.55
 
-        # Posición del texto: encima de la crema
         alfajor_top_cy = cy - h_alfajor / 2
         texto_surface_cy = alfajor_top_cy - crema_height * math.sin(tilt_rad)
 
-        progress_texto = min(100, (progreso - 60) * 100 / 40)
-        chars_visible = int(len(self._texto) * progress_texto / 100)
-        texto_visible = self._texto[:max(1, chars_visible)]
-
-        font_size = max(12, int(ancho_max / max(len(self._texto), 1) * 1.4))
-        font_size = min(font_size, 32)
+        progress_texto = min(100, max(0, (progreso - 60) * 100 / 40))
 
         painter.save()
         if tilt > 2:
@@ -438,181 +431,80 @@ class AlfajorCanvas(QWidget):
             t.translate(-cx, -texto_surface_cy)
             painter.setTransform(t, True)
 
-        rect = QRectF(cx - ancho_max, texto_surface_cy - 18, ancho_max * 2, 36)
-        font = QFont("Purisa", font_size, QFont.Bold)
+        # Generar path de texto con PathGenerator
+        pg = PathGenerator(PC.ALFAJOR_RADIO_MM, self._grosor)
+        text_path = pg.generar_texto(self._texto)
+        if not text_path:
+            painter.restore()
+            return
 
-        # Extrusión 3D: capas desde la superficie hacia abajo
+        # Escalar mm → pixels
+        radio_alfajor = PC.ALFAJOR_DIAMETRO_MM / 2
+        ratio = PC.ALFAJOR_RADIO_MM / radio_alfajor if radio_alfajor > 0 else 0.82
+        radio_crema = r * ratio
+        px_per_mm = radio_crema / PC.ALFAJOR_RADIO_MM if PC.ALFAJOR_RADIO_MM > 0 else 1.0
+
+        # Clip por progreso
+        clipped = PathGenerator.clipped_path(text_path, progress_texto / 100.0)
+
+        grosor_texto = max(2, 3 + (self._grosor / 100) * 4)
+
+        # Capas 3D
         text_extrusion = 6 * scale if tilt > 3 else 2 * scale
         num_layers = 8 if tilt > 3 else 3
         for d in range(num_layers, 0, -1):
             frac = d / num_layers
             alpha = int(30 + frac * 140)
             offset_y = text_extrusion * frac
-            painter.setPen(QPen(QColor(90, 55, 20, alpha), 1))
-            painter.setFont(font)
-            r_offset = QRectF(rect.x(), rect.y() + offset_y,
-                            rect.width(), rect.height())
-            painter.drawText(r_offset, Qt.AlignCenter, texto_visible)
+            painter.setPen(QPen(QColor(90, 55, 20, alpha), grosor_texto,
+                               Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
+            self._render_path_raw(painter, clipped, cx, texto_surface_cy + offset_y, px_per_mm)
 
-        # Texto principal (superficie)
-        painter.setPen(QPen(QColor(160, 100, 40, 240), 1))
-        painter.setFont(font)
-        painter.drawText(rect, Qt.AlignCenter, texto_visible)
+        # Superficie
+        painter.setPen(QPen(QColor(160, 100, 40, 240), grosor_texto,
+                           Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
+        self._render_path_raw(painter, clipped, cx, texto_surface_cy, px_per_mm)
 
-        # Highlight superior
-        painter.setPen(QPen(QColor(240, 200, 140, 100), 1))
-        r_hl = QRectF(rect.x(), rect.y() - 1.5, rect.width(), rect.height())
-        painter.drawText(r_hl, Qt.AlignCenter, texto_visible)
+        # Highlight
+        painter.setPen(QPen(QColor(240, 200, 140, 100), max(1, grosor_texto * 0.5),
+                           Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
+        self._render_path_raw(painter, clipped, cx, texto_surface_cy - 1.5, px_per_mm)
 
         painter.restore()
 
-    # === Patrones ===
+    # === Path rendering unificado ===
 
-    def _dibujar_patron(self, painter, cx, cy, radio_max, progreso):
-        """Dispatcher de patrones."""
-        patron = self._patron.lower() if self._patron else "espiral"
+    def _dibujar_path(self, painter, cx, cy, radio_max, progreso):
+        """Dibuja el patrón actual usando PathGenerator (mismas coords que G-Code)."""
+        from backend.config import PrinterConfig as PC
+        from backend.path_generator import PathGenerator
 
-        if "zigzag" in patron:
-            self._p_zigzag(painter, cx, cy, radio_max, progreso)
-        elif "circulo" in patron:
-            self._p_circulos(painter, cx, cy, radio_max, progreso)
-        elif "rejilla" in patron:
-            self._p_rejilla(painter, cx, cy, radio_max, progreso)
-        elif "relleno" in patron:
-            self._p_relleno(painter, cx, cy, radio_max, progreso)
-        elif "estrella" in patron:
-            self._p_estrella(painter, cx, cy, radio_max, progreso)
-        elif "corazon" in patron:
-            self._p_corazon(painter, cx, cy, radio_max, progreso)
-        elif "borde" in patron:
-            self._p_borde(painter, cx, cy, radio_max, progreso)
-        elif "ondas" in patron:
-            self._p_ondas(painter, cx, cy, radio_max, progreso)
-        else:
-            self._p_espiral(painter, cx, cy, radio_max, progreso)
+        patron = self._patron if self._patron else "espiral"
+        pg = PathGenerator(PC.ALFAJOR_RADIO_MM, self._grosor)
+        path = pg.generar(patron)
 
-    def _p_espiral(self, painter, cx, cy, radio_max, progreso):
-        path = QPainterPath()
-        total, vueltas = 200, 5
-        visible = int(total * progreso / 100)
-        if visible < 2:
-            return
-        for i in range(visible):
-            t = i / total
-            a = t * vueltas * 2 * math.pi
-            r = t * radio_max
-            x, y = cx + r * math.cos(a), cy + r * math.sin(a)
-            path.moveTo(x, y) if i == 0 else path.lineTo(x, y)
-        painter.drawPath(path)
+        # Escalar mm → pixels
+        px_per_mm = radio_max / PC.ALFAJOR_RADIO_MM if PC.ALFAJOR_RADIO_MM > 0 else 1.0
 
-    def _p_zigzag(self, painter, cx, cy, radio_max, progreso):
-        lineas = 10
-        visible = max(1, int(lineas * progreso / 100))
-        m = radio_max * 0.1
-        for i in range(visible):
-            t = (i + 0.5) / lineas
-            y = cy - radio_max + t * 2 * radio_max
-            dy = abs(y - cy)
-            if dy >= radio_max:
+        # Clip por progreso
+        clipped = PathGenerator.clipped_path(path, progreso / 100.0)
+
+        self._render_path_raw(painter, clipped, cx, cy, px_per_mm)
+
+    def _render_path_raw(self, painter, path, cx, cy, px_per_mm):
+        """Renderiza un path (lista de segmentos) con QPainter."""
+        for segment in path:
+            if len(segment) < 2:
                 continue
-            dx = math.sqrt(radio_max ** 2 - dy ** 2)
-            x1, x2 = cx - dx + m, cx + dx - m
-            if i % 2 == 0:
-                painter.drawLine(QPointF(x1, y), QPointF(x2, y))
-            else:
-                painter.drawLine(QPointF(x2, y), QPointF(x1, y))
-
-    def _p_circulos(self, painter, cx, cy, radio_max, progreso):
-        n = 6
-        visible = max(2, int(n * progreso / 100) + 1)
-        for i in range(1, visible):
-            r = (i / n) * radio_max
-            painter.drawEllipse(QPointF(cx, cy), r, r)
-
-    def _p_rejilla(self, painter, cx, cy, radio_max, progreso):
-        n = 8
-        visible = max(1, int(n * progreso / 100))
-        for i in range(visible):
-            t = (i + 0.5) / n
-            pos = -radio_max + t * 2 * radio_max
-            dy = abs(pos)
-            if dy >= radio_max:
-                continue
-            dx = math.sqrt(radio_max ** 2 - dy ** 2)
-            painter.drawLine(QPointF(cx - dx, cy + pos), QPointF(cx + dx, cy + pos))
-            painter.drawLine(QPointF(cx + pos, cy - dx), QPointF(cx + pos, cy + dx))
-
-    def _p_relleno(self, painter, cx, cy, radio_max, progreso):
-        path = QPainterPath()
-        total, vueltas = 300, 12
-        visible = int(total * progreso / 100)
-        if visible < 2:
-            return
-        for i in range(visible):
-            t = i / total
-            a = t * vueltas * 2 * math.pi
-            r = t * radio_max
-            x, y = cx + r * math.cos(a), cy + r * math.sin(a)
-            path.moveTo(x, y) if i == 0 else path.lineTo(x, y)
-        painter.drawPath(path)
-
-    def _p_estrella(self, painter, cx, cy, radio_max, progreso):
-        puntas = 8
-        visible = max(1, int(puntas * 2 * progreso / 100))
-        path = QPainterPath()
-        for i in range(visible):
-            a = (i * math.pi) / puntas
-            r = radio_max if i % 2 == 0 else radio_max * 0.4
-            x = cx + r * math.cos(a - math.pi / 2)
-            y = cy + r * math.sin(a - math.pi / 2)
-            path.moveTo(x, y) if i == 0 else path.lineTo(x, y)
-        if visible > 2:
-            path.closeSubpath()
-        painter.drawPath(path)
-
-    def _p_corazon(self, painter, cx, cy, radio_max, progreso):
-        path = QPainterPath()
-        total = 100
-        visible = int(total * progreso / 100)
-        if visible < 2:
-            return
-        s = radio_max / 17
-        for i in range(visible):
-            t = (i / total) * 2 * math.pi
-            x = 16 * math.sin(t) ** 3
-            y = -(13 * math.cos(t) - 5 * math.cos(2*t) - 2 * math.cos(3*t) - math.cos(4*t))
-            px, py = cx + x * s, cy + y * s
-            path.moveTo(px, py) if i == 0 else path.lineTo(px, py)
-        painter.drawPath(path)
-
-    def _p_borde(self, painter, cx, cy, radio_max, progreso):
-        av = 360 * progreso / 100
-        start = 90 * 16
-        span = -int(av * 16)
-        rect = QRectF(cx - radio_max, cy - radio_max, radio_max * 2, radio_max * 2)
-        painter.drawArc(rect, start, span)
-        r2 = radio_max * 0.7
-        rect2 = QRectF(cx - r2, cy - r2, r2 * 2, r2 * 2)
-        painter.drawArc(rect2, start, -int(av * 0.8 * 16))
-
-    def _p_ondas(self, painter, cx, cy, radio_max, progreso):
-        n = 8
-        visible = max(1, int(n * progreso / 100))
-        for i in range(visible):
-            path = QPainterPath()
-            t = (i + 0.5) / n
-            y_base = cy - radio_max + t * 2 * radio_max
-            dy = abs(y_base - cy)
-            if dy >= radio_max:
-                continue
-            dx = math.sqrt(radio_max ** 2 - dy ** 2)
-            steps = 40
-            for j in range(steps):
-                f = j / (steps - 1)
-                x = (cx - dx) + f * 2 * dx
-                y = y_base + math.sin(f * 4 * math.pi) * 8
-                path.moveTo(x, y) if j == 0 else path.lineTo(x, y)
-            painter.drawPath(path)
+            qpath = QPainterPath()
+            x0 = cx + segment[0][0] * px_per_mm
+            y0 = cy + segment[0][1] * px_per_mm
+            qpath.moveTo(x0, y0)
+            for pt in segment[1:]:
+                px = cx + pt[0] * px_per_mm
+                py = cy + pt[1] * px_per_mm
+                qpath.lineTo(px, py)
+            painter.drawPath(qpath)
 
     # === UI ===
 
