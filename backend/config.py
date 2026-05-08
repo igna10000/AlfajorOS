@@ -58,6 +58,7 @@ class PrinterConfig:
     # === Extrusor ===
     BOQUILLA_MM = _get(_cfg, "extrusor", "diametro_boquilla_mm", default=3.0)
     FLUJO_E_POR_MM = _get(_cfg, "extrusor", "flujo_e_por_mm", default=0.05)
+    RETRACCION_HABILITADA = _get(_cfg, "extrusor", "retraccion_habilitada", default=True)
     RETRACCION_MM = _get(_cfg, "extrusor", "retraccion_mm", default=2.0)
     VEL_RETRACCION = _get(_cfg, "extrusor", "velocidad_retraccion", default=1800)
     DESRETRACCION_MM = _get(_cfg, "extrusor", "desretraccion_mm", default=2.0)
@@ -105,6 +106,7 @@ class PrinterConfig:
         # === Extrusor ===
         cls.BOQUILLA_MM = _get(_cfg, "extrusor", "diametro_boquilla_mm", default=3.0)
         cls.FLUJO_E_POR_MM = _get(_cfg, "extrusor", "flujo_e_por_mm", default=0.05)
+        cls.RETRACCION_HABILITADA = _get(_cfg, "extrusor", "retraccion_habilitada", default=True)
         cls.RETRACCION_MM = _get(_cfg, "extrusor", "retraccion_mm", default=2.0)
         cls.VEL_RETRACCION = _get(_cfg, "extrusor", "velocidad_retraccion", default=1800)
         cls.DESRETRACCION_MM = _get(_cfg, "extrusor", "desretraccion_mm", default=2.0)
@@ -149,6 +151,7 @@ class PrinterConfig:
             'extrusor': {
                 'diametro_boquilla_mm': float(cls.BOQUILLA_MM),
                 'flujo_e_por_mm': float(cls.FLUJO_E_POR_MM),
+                'retraccion_habilitada': bool(cls.RETRACCION_HABILITADA),
                 'retraccion_mm': float(cls.RETRACCION_MM),
                 'velocidad_retraccion': int(cls.VEL_RETRACCION),
                 'desretraccion_mm': float(cls.DESRETRACCION_MM),

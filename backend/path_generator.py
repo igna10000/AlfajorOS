@@ -355,9 +355,9 @@ class PathGenerator:
         texto = texto.upper()
 
         # Calcular dimensiones
-        char_h = r * 0.5
+        char_h = r * 0.7
         char_w = char_h * 0.65
-        spacing = char_w * 0.15
+        spacing = char_w * 0.43
         total_w = len(texto) * char_w + (len(texto) - 1) * spacing
 
         # Limitar al diámetro

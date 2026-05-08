@@ -5,14 +5,14 @@
 
 # === Alfajor ===
 alfajor:
-  diametro_mm: 69.0
+  diametro_mm: 70.0
   margen_mm: 3.0
   centro_x: 145.0
   centro_y: 150.0
 
 # === Impresion ===
 impresion:
-  z_altura_mm: 0.6
+  z_altura_mm: 0.45
   z_offset_mm: -10.0
   velocidad_impresion: 800
   velocidad_viaje: 3000
@@ -22,9 +22,10 @@ impresion:
 # === Extrusor ===
 extrusor:
   diametro_boquilla_mm: 1.5
-  flujo_e_por_mm: 0.25
-  retraccion_mm: 63.0
-  velocidad_retraccion: 8400
+  flujo_e_por_mm: 0.05
+  retraccion_habilitada: false
+  retraccion_mm: 363.0
+  velocidad_retraccion: 90000
   desretraccion_mm: 54.0
   purga_inicial_mm: 120.0
   purga_pos_x: 0.0

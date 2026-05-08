@@ -56,18 +56,16 @@ class GCodeBuilder:
         self.current_z = z
 
     def travel(self, x, y):
-        """Movimiento rapido sin extruir (con retraccion + Z-hop)."""
-        if not self.retracted:
-            self._retract()
-        # Z-hop
-        hop_z = self.current_z + PC.Z_HOP_MM
-        self.raw(f"G1 Z{hop_z:.2f} F{PC.VEL_Z}")
-        # Mover XY
-        self.raw(f"G0 X{x:.3f} Y{y:.3f} F{PC.VEL_VIAJE}")
-        # Bajar Z
-        self.raw(f"G1 Z{self.current_z:.2f} F{PC.VEL_Z}")
-        # Desretraer
-        self._unretract()
+        """Movimiento sin extruir — continuo, sin detener XY.
+        Si retraccion habilitada: retrae E durante el movimiento XY.
+        Si deshabilitada: solo mueve XY sin tocar E.
+        Sin Z-hop en ningun caso.
+        """
+        if PC.RETRACCION_HABILITADA and not self.retracted:
+            self.e_total -= PC.RETRACCION_MM
+            self.retracted = True
+        # Mover XY (un solo comando, sin paradas)
+        self.raw(f"G1 X{x:.3f} Y{y:.3f} E{self.e_total:.4f} F{PC.VEL_VIAJE}")
         self.current_x = x
         self.current_y = y
 
@@ -75,6 +73,10 @@ class GCodeBuilder:
         """Movimiento con extrusion."""
         if speed is None:
             speed = PC.VEL_IMPRESION
+        # Si esta retraido, absorber desretraccion en este movimiento
+        if self.retracted:
+            self.e_total += PC.DESRETRACCION_MM
+            self.retracted = False
         dx = x - self.current_x
         dy = y - self.current_y
         dist = math.sqrt(dx * dx + dy * dy)
@@ -97,7 +99,7 @@ class GCodeBuilder:
 
     def park(self):
         """Posicion de estacionamiento al finalizar."""
-        if not self.retracted:
+        if PC.RETRACCION_HABILITADA and not self.retracted:
             self._retract()
         self.raw(f"G1 Z{PC.POS_FINAL_Z:.1f} F{PC.VEL_Z}")
         self.raw(f"G0 X{PC.POS_FINAL_X:.1f} Y{PC.POS_FINAL_Y:.1f} F{PC.VEL_VIAJE}")
@@ -167,11 +169,13 @@ class GCodeGenerator:
             g.retracted = True  # Post-purga: considerar retraido para evitar E negativo
             g.blank()
 
-        # Mover al centro del alfajor para empezar
+        # Posicionar en altura de impresion y centro del alfajor (un solo movimiento)
         g.comment("Posicionando en centro del alfajor")
-        g.move_z(self.z_print + PC.Z_HOP_MM)
-        g.raw(f"G0 X{self.cx:.1f} Y{self.cy:.1f} F{PC.VEL_VIAJE}")
-        g.move_z(self.z_print)
+        g.raw(f"G1 X{self.cx:.1f} Y{self.cy:.1f} Z{self.z_print:.2f} F{PC.VEL_VIAJE}")
+        g.current_x = self.cx
+        g.current_y = self.cy
+        g.current_z = self.z_print
+        g.retracted = False
         g.blank()
 
         # === Marca inicio de dibujo ===
