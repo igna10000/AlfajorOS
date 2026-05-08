@@ -5,14 +5,14 @@
 
 # === Alfajor ===
 alfajor:
-  diametro_mm: 84.0
+  diametro_mm: 69.0
   margen_mm: 3.0
   centro_x: 145.0
   centro_y: 150.0
 
 # === Impresion ===
 impresion:
-  z_altura_mm: 0.2
+  z_altura_mm: 0.6
   z_offset_mm: -10.0
   velocidad_impresion: 800
   velocidad_viaje: 3000
