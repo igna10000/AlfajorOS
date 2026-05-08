@@ -219,17 +219,19 @@ class GCodeGenerator:
         Cada segmento: primer punto = travel, resto = extrude.
         Coordenadas del path estan centradas en (0,0),
         se trasladan a (cx, cy) del alfajor en la cama.
+        X se niega para corregir el espejo entre la vista previa
+        (pantalla) y la orientacion fisica de la impresora.
         """
         for segment in path:
             if len(segment) < 2:
                 continue
             # Travel al primer punto del segmento
-            x0 = self.cx + segment[0][0]
+            x0 = self.cx - segment[0][0]
             y0 = self.cy + segment[0][1]
             g.travel(x0, y0)
             # Extrude por el resto del segmento
             for px, py in segment[1:]:
-                g.extrude_to(self.cx + px, self.cy + py)
+                g.extrude_to(self.cx - px, self.cy + py)
 
 
 # ============================================================
