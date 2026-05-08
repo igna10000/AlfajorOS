@@ -12,8 +12,8 @@ alfajor:
 
 # === Impresion ===
 impresion:
-  z_altura_mm: 0.45
-  z_offset_mm: -10.0
+  z_altura_mm: 2.0
+  z_offset_mm: 0.0
   velocidad_impresion: 800
   velocidad_viaje: 3000
   velocidad_z: 600
@@ -24,8 +24,8 @@ extrusor:
   diametro_boquilla_mm: 1.5
   flujo_e_por_mm: 0.05
   retraccion_habilitada: false
-  retraccion_mm: 363.0
-  velocidad_retraccion: 90000
+  retraccion_mm: 200.0
+  velocidad_retraccion: 20000
   desretraccion_mm: 54.0
   purga_inicial_mm: 120.0
   purga_pos_x: 0.0
