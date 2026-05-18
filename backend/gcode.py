@@ -102,8 +102,8 @@ class GCodeBuilder:
         """Secuencia de finalizacion segura:
         1. Retraccion forzada (siempre, independiente de RETRACCION_HABILITADA)
            Evita que la crema gotee al levantar la boquilla.
-        2. Levantar Z a pos_final_z PRIMERO (nunca mover XY con boquilla baja)
-        3. Desplazar XY a posicion de estacionamiento con boquilla alta
+        2. Movimiento simultaneo X+Y+Z en un solo G0 rapido:
+           la boquilla sube mientras se desplaza lateralmente.
         """
         # --- Paso 1: Retraccion forzada al finalizar ---
         if PC.FIN_RETRACCION_MM > 0 and not self.retracted:
@@ -112,16 +112,19 @@ class GCodeBuilder:
             self.raw(f"G1 E{self.e_total:.4f} F{PC.VEL_RETRACCION}")
             self.retracted = True
 
-        # --- Paso 2: Levantar Z primero ---
-        self.comment(f"Levantar boquilla a Z={PC.POS_FINAL_Z:.1f} mm")
-        self.raw(f"G1 Z{PC.POS_FINAL_Z:.1f} F{PC.VEL_Z}")
-        self.current_z = PC.POS_FINAL_Z
-
-        # --- Paso 3: Desplazar XY con boquilla ya levantada ---
-        self.comment(f"Estacionamiento en X={PC.POS_FINAL_X:.1f} Y={PC.POS_FINAL_Y:.1f}")
-        self.raw(f"G0 X{PC.POS_FINAL_X:.1f} Y{PC.POS_FINAL_Y:.1f} F{PC.VEL_VIAJE}")
+        # --- Paso 2: Subir Z + desplazar XY simultaneamente (un solo comando) ---
+        self.comment(
+            f"Estacionamiento: X={PC.POS_FINAL_X:.1f} "
+            f"Y={PC.POS_FINAL_Y:.1f} "
+            f"Z={PC.POS_FINAL_Z:.1f} (simultaneo)"
+        )
+        self.raw(
+            f"G0 X{PC.POS_FINAL_X:.1f} Y{PC.POS_FINAL_Y:.1f} "
+            f"Z{PC.POS_FINAL_Z:.1f} F{PC.VEL_VIAJE}"
+        )
         self.current_x = PC.POS_FINAL_X
         self.current_y = PC.POS_FINAL_Y
+        self.current_z = PC.POS_FINAL_Z
 
     def build(self):
         return "\n".join(self.lines) + "\n"
