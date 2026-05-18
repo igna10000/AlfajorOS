@@ -72,6 +72,7 @@ class PrinterConfig:
     POS_FINAL_X = _get(_cfg, "viaje", "pos_final_x", default=10.0)
     POS_FINAL_Y = _get(_cfg, "viaje", "pos_final_y", default=10.0)
     POS_FINAL_Z = _get(_cfg, "viaje", "pos_final_z", default=10.0)
+    FIN_RETRACCION_MM = _get(_cfg, "viaje", "fin_retraccion_mm", default=30.0)
 
     # === Linea ===
     GROSOR_DEFAULT_MM = _get(_cfg, "linea", "grosor_default_mm", default=2.0)
@@ -125,6 +126,7 @@ class PrinterConfig:
         cls.POS_FINAL_X = _get(_cfg, "viaje", "pos_final_x", default=10.0)
         cls.POS_FINAL_Y = _get(_cfg, "viaje", "pos_final_y", default=10.0)
         cls.POS_FINAL_Z = _get(_cfg, "viaje", "pos_final_z", default=10.0)
+        cls.FIN_RETRACCION_MM = _get(_cfg, "viaje", "fin_retraccion_mm", default=30.0)
         # === Linea ===
         cls.GROSOR_DEFAULT_MM = _get(_cfg, "linea", "grosor_default_mm", default=2.0)
         cls.GROSOR_MIN_MM = _get(_cfg, "linea", "grosor_min_mm", default=0.5)
@@ -176,6 +178,7 @@ class PrinterConfig:
                 'pos_final_x': float(cls.POS_FINAL_X),
                 'pos_final_y': float(cls.POS_FINAL_Y),
                 'pos_final_z': float(cls.POS_FINAL_Z),
+                'fin_retraccion_mm': float(cls.FIN_RETRACCION_MM),
             },
             'linea': {
                 'grosor_default_mm': float(cls.GROSOR_DEFAULT_MM),

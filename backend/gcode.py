@@ -99,11 +99,29 @@ class GCodeBuilder:
         self.retracted = False
 
     def park(self):
-        """Posicion de estacionamiento al finalizar."""
-        if PC.RETRACCION_HABILITADA and not self.retracted:
-            self._retract()
+        """Secuencia de finalizacion segura:
+        1. Retraccion forzada (siempre, independiente de RETRACCION_HABILITADA)
+           Evita que la crema gotee al levantar la boquilla.
+        2. Levantar Z a pos_final_z PRIMERO (nunca mover XY con boquilla baja)
+        3. Desplazar XY a posicion de estacionamiento con boquilla alta
+        """
+        # --- Paso 1: Retraccion forzada al finalizar ---
+        if PC.FIN_RETRACCION_MM > 0 and not self.retracted:
+            self.comment("Retraccion final (evita goteo al levantar)")
+            self.e_total -= PC.FIN_RETRACCION_MM
+            self.raw(f"G1 E{self.e_total:.4f} F{PC.VEL_RETRACCION}")
+            self.retracted = True
+
+        # --- Paso 2: Levantar Z primero ---
+        self.comment(f"Levantar boquilla a Z={PC.POS_FINAL_Z:.1f} mm")
         self.raw(f"G1 Z{PC.POS_FINAL_Z:.1f} F{PC.VEL_Z}")
+        self.current_z = PC.POS_FINAL_Z
+
+        # --- Paso 3: Desplazar XY con boquilla ya levantada ---
+        self.comment(f"Estacionamiento en X={PC.POS_FINAL_X:.1f} Y={PC.POS_FINAL_Y:.1f}")
         self.raw(f"G0 X{PC.POS_FINAL_X:.1f} Y{PC.POS_FINAL_Y:.1f} F{PC.VEL_VIAJE}")
+        self.current_x = PC.POS_FINAL_X
+        self.current_y = PC.POS_FINAL_Y
 
     def build(self):
         return "\n".join(self.lines) + "\n"

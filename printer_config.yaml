@@ -13,7 +13,7 @@ alfajor:
 # === Impresion ===
 impresion:
   z_altura_mm: 0.5
-  z_offset_mm: 6.0
+  z_offset_mm: 4.0
   velocidad_impresion: 800
   velocidad_viaje: 3000
   velocidad_z: 600
@@ -22,7 +22,7 @@ impresion:
 # === Extrusor ===
 extrusor:
   diametro_boquilla_mm: 1.5
-  flujo_e_por_mm: 0.12
+  flujo_e_por_mm: 0.15
   retraccion_habilitada: false
   retraccion_mm: 200.0
   velocidad_retraccion: 20000
@@ -35,9 +35,12 @@ extrusor:
 # === Viaje ===
 viaje:
   z_hop_mm: 3.0
-  pos_final_x: 1.0
-  pos_final_y: 1.0
-  pos_final_z: 1.0
+  pos_final_x: 10.0
+  pos_final_y: 10.0
+  pos_final_z: 40.0
+  # Retraccion forzada al finalizar (siempre se aplica, independiente de retraccion_habilitada)
+  # Evita que la crema gotee al levantar la boquilla. 0 = deshabilitado
+  fin_retraccion_mm: 5.0
 
 # === Linea de crema ===
 linea:
