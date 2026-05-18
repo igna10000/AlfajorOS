@@ -36,6 +36,8 @@ class AlfajorCanvas(QWidget):
         self._patron = ""
         self._texto = ""
         self._grosor = 50
+        self._imagen_path = ""
+        self._imagen_path_cache = {}   # {path: list[segments]} — cache del pipeline
         self._animacion_t = 0.0
         self._printing = False
 
@@ -65,7 +67,7 @@ class AlfajorCanvas(QWidget):
     def _render_progreso(self):
         if self._printing:
             return self._progreso
-        elif self._patron or self._texto:
+        elif self._patron or self._texto or self._imagen_path:
             return 100
         else:
             return 0
@@ -106,12 +108,34 @@ class AlfajorCanvas(QWidget):
         self._grosor = grosor
         self.update()
 
+    def set_imagen(self, path):
+        """Establece una imagen personalizada para preview.
+        Procesa el pipeline UNA sola vez y cachea el resultado.
+        """
+        self._patron = ""  # Limpiar patrón al usar imagen
+        self._imagen_path = path
+
+        # Procesar inmediatamente y guardar en cache para que los frames
+        # posteriores no vuelvan a ejecutar Zhang-Suen thinning
+        if path and path not in self._imagen_path_cache:
+            try:
+                from backend.config import PrinterConfig as PC
+                from backend.path_generator import PathGenerator
+                pg = PathGenerator(PC.ALFAJOR_RADIO_MM, self._grosor)
+                self._imagen_path_cache[path] = pg.generar_imagen(path)
+            except Exception as e:
+                print(f"[Canvas] Error procesando imagen: {e}")
+                self._imagen_path_cache[path] = []
+
+        self.update()
+
     def reset(self):
         """Reinicia todo: progreso, patrón, texto, vista."""
         self._progreso = 0
         self._patron = ""
         self._texto = ""
         self._grosor = 50
+        self._imagen_path = ""
         self._printing = False
         self._view_mode = VIEW_TOP
         self._free_tilt = 35.0
@@ -229,7 +253,7 @@ class AlfajorCanvas(QWidget):
         self._dibujar_alfajor_3d(painter, cx, cy, scale, tilt)
 
         rp = self._render_progreso
-        if rp > 0 and self._patron:
+        if rp > 0 and (self._patron or self._imagen_path):
             self._dibujar_crema_3d(painter, cx, cy, scale, tilt, rp)
 
         if self._texto and rp > 60:
@@ -475,13 +499,22 @@ class AlfajorCanvas(QWidget):
     # === Path rendering unificado ===
 
     def _dibujar_path(self, painter, cx, cy, radio_max, progreso):
-        """Dibuja el patrón actual usando PathGenerator (mismas coords que G-Code)."""
+        """Dibuja el patrón o imagen actual usando PathGenerator.
+        Para imágenes: usa cache — el pipeline pesado ya se ejecutó en set_imagen().
+        """
         from backend.config import PrinterConfig as PC
         from backend.path_generator import PathGenerator
 
-        patron = self._patron if self._patron else "espiral"
-        pg = PathGenerator(PC.ALFAJOR_RADIO_MM, self._grosor)
-        path = pg.generar(patron)
+        if self._imagen_path:
+            # Usar cache: O(1), sin procesamiento CV2
+            path = self._imagen_path_cache.get(self._imagen_path, [])
+        else:
+            pg = PathGenerator(PC.ALFAJOR_RADIO_MM, self._grosor)
+            patron = self._patron if self._patron else "espiral"
+            path = pg.generar(patron)
+
+        if not path:
+            return
 
         # Escalar mm → pixels
         px_per_mm = radio_max / PC.ALFAJOR_RADIO_MM if PC.ALFAJOR_RADIO_MM > 0 else 1.0
@@ -560,6 +593,11 @@ class AlfajorCanvas(QWidget):
             color = QColor(255, 171, 64, 200)
         elif self._patron:
             texto = f"Vista previa: {self._patron}"
+            color = QColor(150, 150, 150, 150)
+        elif self._imagen_path:
+            import os
+            nombre = os.path.basename(self._imagen_path)
+            texto = f"Vista previa: {nombre}"
             color = QColor(150, 150, 150, 150)
         elif self._texto:
             texto = f"Vista previa: '{self._texto}'"

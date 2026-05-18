@@ -10,6 +10,7 @@ garantizando que el G-Code generado coincida con la previsualizacion.
 """
 
 import math
+import os
 from backend.config import PrinterConfig as PC
 from backend.path_generator import PathGenerator
 
@@ -126,7 +127,7 @@ class GCodeGenerator:
         self.radio = PC.ALFAJOR_RADIO_MM
         self.z_print = PC.Z_ALTURA_MM + PC.Z_OFFSET_MM
 
-    def generar_completo(self, patron="", texto="", grosor_pct=50):
+    def generar_completo(self, patron="", texto="", grosor_pct=50, imagen_path=""):
         """
         Genera G-Code completo para un patron y/o texto.
         Retorna (gcode_str, metadata) donde metadata contiene:
@@ -141,6 +142,7 @@ class GCodeGenerator:
         g.comment("AlfajorOS - G-Code de Crema")
         g.comment(f"Patron: {patron or 'ninguno'}")
         g.comment(f"Texto: {texto or 'ninguno'}")
+        g.comment(f"Imagen: {os.path.basename(imagen_path) if imagen_path else 'ninguna'}")
         g.comment(f"Centro: ({self.cx}, {self.cy})")
         g.comment(f"Radio util: {self.radio:.1f} mm")
         g.comment("=" * 50)
@@ -192,9 +194,17 @@ class GCodeGenerator:
         # Texto — usa PathGenerator
         if texto:
             g.comment(f"=== Texto: {texto} ===")
-            pg = PathGenerator(self.radio, grosor_pct)
-            path_texto = pg.generar_texto(texto)
+            pg_txt = PathGenerator(self.radio, grosor_pct)
+            path_texto = pg_txt.generar_texto(texto)
             self._path_to_gcode(g, path_texto)
+            g.blank()
+
+        # Imagen personalizada — usa PathGenerator + ImageProcessor
+        if imagen_path:
+            g.comment(f"=== Imagen: {os.path.basename(imagen_path)} ===")
+            pg_img = PathGenerator(self.radio, grosor_pct)
+            path_img = pg_img.generar_imagen(imagen_path)
+            self._path_to_gcode(g, path_img)
             g.blank()
 
         # === Marca fin de dibujo ===

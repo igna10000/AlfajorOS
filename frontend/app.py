@@ -12,6 +12,7 @@ from frontend.views.login_view import LoginWindow
 from frontend.views.main_view import MainView
 from frontend.views.text_options_view import TextOptionsView
 from frontend.views.figure_options_view import FigureOptionsView
+from frontend.views.image_selection_view import ImageSelectionView
 from frontend.views.pro_mode import ProModeWindow
 from frontend.views.example_window import ExampleWindow
 from frontend.views.product_selection import ProductSelectionWindow
@@ -36,6 +37,7 @@ class AppController:
         self.main_win = None
         self.text_opts = TextOptionsView()
         self.figure_opts = FigureOptionsView()
+        self.image_selection = ImageSelectionView()
         self.pro_mode = ProModeWindow()
         self.example_win = ExampleWindow()
 
@@ -43,10 +45,11 @@ class AppController:
         self._conectar_login()
         self._conectar_text_opts()
         self._conectar_figure_opts()
+        self._conectar_image_selection()
         self._conectar_pro_mode()
         self._conectar_example()
         self._conectar_actividad([
-            self.text_opts, self.figure_opts,
+            self.text_opts, self.figure_opts, self.image_selection,
             self.pro_mode, self.example_win
         ])
 
@@ -71,6 +74,11 @@ class AppController:
     def _conectar_figure_opts(self):
         self.figure_opts.figura_configurada.connect(self._on_figura_configurada)
         self.figure_opts.ir_atras.connect(self._on_figura_atras)
+        self.figure_opts.abrir_imagen.connect(self._on_abrir_imagen)
+
+    def _conectar_image_selection(self):
+        self.image_selection.imagen_seleccionada.connect(self._on_imagen_configurada)
+        self.image_selection.ir_atras.connect(self._on_imagen_atras)
 
     def _conectar_pro_mode(self):
         self.pro_mode.volver_basico.connect(self._on_volver_basico)
@@ -149,6 +157,26 @@ class AppController:
         if self.main_win:
             self.main_win.show()
             self.main_win.raise_()
+
+    def _on_abrir_imagen(self):
+        """Abre la ventana de selección de imágenes."""
+        self.image_selection.reset()
+        self._posicionar_ventana(self.image_selection)
+        self.image_selection.show()
+        self.image_selection.raise_()
+
+    def _on_imagen_configurada(self, path):
+        """Imagen seleccionada — configurar en MainView."""
+        if self.main_win:
+            self.main_win.set_imagen(path)
+            self.main_win.show()
+            self.main_win.raise_()
+
+    def _on_imagen_atras(self):
+        """Volver de selección de imagen a figure_opts."""
+        self._posicionar_ventana(self.figure_opts)
+        self.figure_opts.show()
+        self.figure_opts.raise_()
 
     def _on_volver_basico(self):
         if self.main_win:

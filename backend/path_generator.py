@@ -145,6 +145,14 @@ class PathGenerator:
         """Genera path para texto usando STROKE_FONT."""
         return self._texto(texto)
 
+    def generar_imagen(self, image_path):
+        """Genera path a partir de una imagen procesada (esqueletizada).
+        Usa ImageProcessor para: binarizar → esqueletizar → trazar → escalar.
+        Retorna path en el mismo formato que generar() y generar_texto().
+        """
+        from backend.image_processor import ImageProcessor
+        return ImageProcessor.imagen_a_path(image_path, self.radio)
+
     # ========================================================
     # Patrones
     # ========================================================

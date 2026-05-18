@@ -1,36 +1,38 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Figure Options View - Proyecto de Grado
-Ventana para seleccionar patrón decorativo con previsualización.
+Image Selection View - Proyecto de Grado
+Ventana para seleccionar una imagen personalizada de backend/assets/.
+Muestra thumbnails y preview de la imagen seleccionada.
 """
 
+import os
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QListWidget, QListWidgetItem, QPushButton, QLabel,
-    QSlider, QFrame, QMessageBox, QSizePolicy
+    QFrame, QMessageBox, QSizePolicy
 )
-from PySide6.QtCore import Qt, Signal, QStringListModel
-from PySide6.QtGui import QFont
+from PySide6.QtCore import Qt, Signal, QSize
+from PySide6.QtGui import QFont, QIcon, QPixmap
 
-from frontend.widgets.alfajor_canvas import AlfajorCanvas
 from backend.config import SystemConfig
+from backend.image_processor import ImageProcessor
 
 
-class FigureOptionsView(QMainWindow):
-    """Ventana para seleccionar patrón decorativo con previsualización."""
+class ImageSelectionView(QMainWindow):
+    """Ventana para seleccionar imagen personalizada con previsualización."""
 
-    figura_configurada = Signal(str, int)
-    abrir_imagen = Signal()
+    imagen_seleccionada = Signal(str)   # path de la imagen
     ir_atras = Signal()
     actividad_detectada = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Patrón Decorativo")
+        self.setWindowTitle("Seleccionar Imagen")
         self.setFixedSize(SystemConfig.SCREEN_WIDTH, SystemConfig.SCREEN_HEIGHT)
         self.setWindowFlags(Qt.FramelessWindowHint)
-        self._patron_actual = ""
+        self._imagen_actual = ""
+        self._imagenes = []
         self._build_ui()
         self._aplicar_estilo()
 
@@ -41,45 +43,25 @@ class FigureOptionsView(QMainWindow):
         main_layout.setContentsMargins(15, 15, 15, 15)
         main_layout.setSpacing(15)
 
-        # === Panel izquierdo: lista de patrones + slider ===
+        # === Panel izquierdo: galería de imágenes ===
         left_panel = QWidget()
         left_layout = QVBoxLayout(left_panel)
         left_layout.setContentsMargins(0, 0, 0, 0)
         left_layout.setSpacing(8)
 
         # Título
-        lbl_titulo = QLabel("Seleccione un patrón:")
+        lbl_titulo = QLabel("Seleccione una imagen:")
         lbl_titulo.setFont(QFont("Purisa", 14, QFont.Bold))
         lbl_titulo.setStyleSheet("color: #4DB6AC;")
         left_layout.addWidget(lbl_titulo)
 
-        # Lista de patrones
-        self.list_patrones = QListWidget()
-        self.list_patrones.setFont(QFont("Purisa", 12))
-        for patron in SystemConfig.PATRONES:
-            item = QListWidgetItem(patron)
-            self.list_patrones.addItem(item)
-        self.list_patrones.currentRowChanged.connect(self._on_patron_seleccionado)
-        left_layout.addWidget(self.list_patrones, stretch=1)
-
-        # Slider de grosor
-        lbl_grosor = QLabel("Grosor de crema:")
-        lbl_grosor.setFont(QFont("Purisa", 11))
-        lbl_grosor.setStyleSheet("color: #e0e0e0;")
-        left_layout.addWidget(lbl_grosor)
-
-        self.slider_grosor = QSlider(Qt.Horizontal)
-        self.slider_grosor.setMinimum(10)
-        self.slider_grosor.setMaximum(100)
-        self.slider_grosor.setValue(50)
-        self.slider_grosor.valueChanged.connect(self._on_grosor_changed)
-        left_layout.addWidget(self.slider_grosor)
-
-        self.lbl_grosor_val = QLabel("50%")
-        self.lbl_grosor_val.setAlignment(Qt.AlignCenter)
-        self.lbl_grosor_val.setFont(QFont("Purisa", 10))
-        self.lbl_grosor_val.setStyleSheet("color: #aaa;")
-        left_layout.addWidget(self.lbl_grosor_val)
+        # Lista de imágenes con iconos
+        self.list_imagenes = QListWidget()
+        self.list_imagenes.setFont(QFont("Purisa", 11))
+        self.list_imagenes.setIconSize(QSize(64, 64))
+        self.list_imagenes.setSpacing(4)
+        self.list_imagenes.currentRowChanged.connect(self._on_imagen_seleccionada)
+        left_layout.addWidget(self.list_imagenes, stretch=1)
 
         # Botones
         h_btns = QHBoxLayout()
@@ -90,12 +72,6 @@ class FigureOptionsView(QMainWindow):
         self.btn_atras.setFont(QFont("Purisa", 12, QFont.Bold))
         self.btn_atras.clicked.connect(self._on_atras)
         h_btns.addWidget(self.btn_atras)
-
-        self.btn_imagen = QPushButton("🖼 IMAGEN")
-        self.btn_imagen.setMinimumHeight(50)
-        self.btn_imagen.setFont(QFont("Purisa", 12, QFont.Bold))
-        self.btn_imagen.clicked.connect(self._on_imagen)
-        h_btns.addWidget(self.btn_imagen)
 
         self.btn_confirmar = QPushButton("✓ CONFIRMAR")
         self.btn_confirmar.setMinimumHeight(50)
@@ -125,10 +101,24 @@ class FigureOptionsView(QMainWindow):
         lbl_preview.setStyleSheet("color: #FFAB40;")
         right_layout.addWidget(lbl_preview)
 
-        # Canvas de previsualización
-        self.preview_canvas = AlfajorCanvas()
-        self.preview_canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        right_layout.addWidget(self.preview_canvas, stretch=1)
+        # Preview de imagen
+        self.lbl_imagen = QLabel()
+        self.lbl_imagen.setAlignment(Qt.AlignCenter)
+        self.lbl_imagen.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.lbl_imagen.setStyleSheet(
+            "background-color: #1e1e1e; "
+            "border: 2px solid #4DB6AC; "
+            "border-radius: 10px;"
+        )
+        self.lbl_imagen.setMinimumSize(300, 300)
+        right_layout.addWidget(self.lbl_imagen, stretch=1)
+
+        # Info de la imagen
+        self.lbl_info = QLabel("")
+        self.lbl_info.setFont(QFont("Purisa", 10))
+        self.lbl_info.setStyleSheet("color: #aaa;")
+        self.lbl_info.setAlignment(Qt.AlignCenter)
+        right_layout.addWidget(self.lbl_info)
 
         main_layout.addWidget(right_panel, stretch=1)
 
@@ -156,18 +146,6 @@ class FigureOptionsView(QMainWindow):
             QListWidget::item:hover {
                 background-color: #3d6e68;
             }
-            QSlider::groove:horizontal {
-                background: #555;
-                height: 30px;
-                border-radius: 15px;
-            }
-            QSlider::handle:horizontal {
-                background: #4DB6AC;
-                width: 56px;
-                height: 56px;
-                margin: -18px 0;
-                border-radius: 28px;
-            }
             QPushButton {
                 background-color: #4DB6AC;
                 color: white;
@@ -180,47 +158,73 @@ class FigureOptionsView(QMainWindow):
             }
         """)
 
+    def _cargar_imagenes(self):
+        """Escanea y carga las imágenes disponibles en la galería."""
+        self.list_imagenes.clear()
+        self._imagenes = ImageProcessor.listar_imagenes()
+
+        for img_info in self._imagenes:
+            item = QListWidgetItem()
+            item.setText(img_info['nombre'])
+
+            # Cargar thumbnail
+            pixmap = QPixmap(img_info['path'])
+            if not pixmap.isNull():
+                thumb = pixmap.scaled(
+                    64, 64, Qt.KeepAspectRatio, Qt.SmoothTransformation
+                )
+                item.setIcon(QIcon(thumb))
+
+            self.list_imagenes.addItem(item)
+
     # === Handlers ===
 
-    def _on_patron_seleccionado(self, row):
-        if row >= 0:
-            self._patron_actual = SystemConfig.PATRONES[row]
-            self.preview_canvas.set_patron(self._patron_actual)
-            self.preview_canvas.set_grosor(self.slider_grosor.value())
+    def _on_imagen_seleccionada(self, row):
+        if row >= 0 and row < len(self._imagenes):
+            img_info = self._imagenes[row]
+            self._imagen_actual = img_info['path']
 
-    def _on_grosor_changed(self, value):
-        self.lbl_grosor_val.setText(f"{value}%")
-        self.preview_canvas.set_grosor(value)
+            # Mostrar preview
+            pixmap = QPixmap(img_info['path'])
+            if not pixmap.isNull():
+                # Escalar al tamaño del label manteniendo proporción
+                preview = pixmap.scaled(
+                    self.lbl_imagen.size(),
+                    Qt.KeepAspectRatio,
+                    Qt.SmoothTransformation
+                )
+                self.lbl_imagen.setPixmap(preview)
+
+            # Info
+            self.lbl_info.setText(
+                f"{img_info['nombre']}{img_info['ext']}"
+            )
 
     def _on_atras(self):
         self.actividad_detectada.emit()
         self.ir_atras.emit()
         self.hide()
 
-    def _on_imagen(self):
-        self.actividad_detectada.emit()
-        self.abrir_imagen.emit()
-        self.hide()
-
     def _on_confirmar(self):
         self.actividad_detectada.emit()
-        if not self._patron_actual:
+        if not self._imagen_actual:
             QMessageBox.warning(self, "Advertencia",
-                                "Seleccione un patrón decorativo.")
+                                "Seleccione una imagen.")
             return
-        grosor = self.slider_grosor.value()
-        self.figura_configurada.emit(self._patron_actual, grosor)
+        self.imagen_seleccionada.emit(self._imagen_actual)
         self.hide()
 
     def reset(self):
-        self.list_patrones.clearSelection()
-        self.slider_grosor.setValue(50)
-        self.lbl_grosor_val.setText("50%")
-        self._patron_actual = ""
-        self.preview_canvas.reset()
+        """Reinicia la vista y recarga imágenes."""
+        self.list_imagenes.clearSelection()
+        self._imagen_actual = ""
+        self.lbl_imagen.clear()
+        self.lbl_info.setText("")
+        self._cargar_imagenes()
 
     def showEvent(self, event):
         self.actividad_detectada.emit()
+        self._cargar_imagenes()
         super().showEvent(event)
 
     def mousePressEvent(self, event):

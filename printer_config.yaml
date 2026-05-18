@@ -54,3 +54,16 @@ serial:
   reconnect_ms: 5000
   timeout_s: 2.0
 
+# === Imagen ===
+imagen:
+  # Epsilon para simplificacion de contornos (% del perimetro)
+  # Menor = mas detallado, Mayor = mas simplificado
+  # Rango recomendado: 0.001 (muy detallado) a 0.02 (muy simplificado) 0.005
+  epsilon_pct: 0.007
+  # Umbral para binarizacion (0 = auto/Otsu)
+  umbral_binario: 0
+  # Area minima de contorno a incluir (en px2), filtra ruido
+  area_minima_px: 2
+  # Margen interno respecto al borde del alfajor (mm)
+  margen_imagen_mm: 2.0
+

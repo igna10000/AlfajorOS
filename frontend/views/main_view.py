@@ -80,6 +80,7 @@ class MainView(QMainWindow):
         self._conectar_printer()
         self._aplicar_animaciones()
         self._configurar_estado_inicial()
+        self._imagen_path = ""
 
     def _setup_alfajor_canvas(self):
         """Reemplaza el openGLWidget placeholder con AlfajorCanvas."""
@@ -326,6 +327,7 @@ class MainView(QMainWindow):
             self.impresion_terminada.emit()
         self.engine.reset()
         self.canvas.reset()
+        self._imagen_path = ""
         self.progressBar.setValue(0)
         self.pushButton_4.setEnabled(False)
         self.pushButton_5.setEnabled(True)
@@ -337,7 +339,7 @@ class MainView(QMainWindow):
             return
 
         # Validar que haya algo configurado
-        if not self.canvas._patron and not self.canvas._texto:
+        if not self.canvas._patron and not self.canvas._texto and not self._imagen_path:
             QMessageBox.warning(
                 self, "Sin configuracion",
                 "Debe seleccionar un patron decorativo o\ningresar un texto antes de extruir."
@@ -358,6 +360,7 @@ class MainView(QMainWindow):
             patron=self.canvas._patron or "",
             texto=self.canvas._texto or "",
             grosor_pct=self.canvas._grosor,
+            imagen_path=self._imagen_path or "",
         )
 
         # Guardar metadata para mapeo de progreso
@@ -366,11 +369,13 @@ class MainView(QMainWindow):
         # Confirmar extrusion
         from backend.gcode import GCodeParser
         n_lineas = GCodeParser.contar_lineas(gcode)
+        img_nombre = os.path.basename(self._imagen_path) if self._imagen_path else ''
         respuesta = QMessageBox.question(
             self, "Confirmar Extrusion",
             f"Se generaron {n_lineas} comandos G-Code.\n"
             f"Patron: {self.canvas._patron or 'ninguno'}\n"
-            f"Texto: {self.canvas._texto or 'ninguno'}\n\n"
+            f"Texto: {self.canvas._texto or 'ninguno'}\n"
+            f"Imagen: {img_nombre or 'ninguna'}\n\n"
             "Iniciar extrusion de crema?",
             QMessageBox.Yes | QMessageBox.No
         )
@@ -455,7 +460,16 @@ class MainView(QMainWindow):
         self.engine.set_patron(figura)
         self.canvas.set_patron(figura)
         self.canvas.set_grosor(tamano)
+        self._imagen_path = ""  # Limpiar imagen al seleccionar patrón
         self.statusbar.showMessage(f"Patrón: {figura} (grosor: {tamano}%)")
+
+    def set_imagen(self, path):
+        """Configura una imagen personalizada para imprimir."""
+        self._imagen_path = path
+        self.canvas.set_imagen(path)
+        self.statusbar.showMessage(
+            f"Imagen: {os.path.basename(path)}"
+        )
 
     def mousePressEvent(self, event):
         self.actividad_detectada.emit()

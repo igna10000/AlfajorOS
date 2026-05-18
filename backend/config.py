@@ -85,6 +85,12 @@ class PrinterConfig:
     SERIAL_RECONNECT_MS = _get(_cfg, "serial", "reconnect_ms", default=5000)
     SERIAL_TIMEOUT_S = _get(_cfg, "serial", "timeout_s", default=2.0)
 
+    # === Imagen ===
+    IMG_EPSILON_PCT = _get(_cfg, "imagen", "epsilon_pct", default=0.005)
+    IMG_UMBRAL_BINARIO = _get(_cfg, "imagen", "umbral_binario", default=0)
+    IMG_AREA_MINIMA_PX = _get(_cfg, "imagen", "area_minima_px", default=50)
+    IMG_MARGEN_MM = _get(_cfg, "imagen", "margen_imagen_mm", default=2.0)
+
     @classmethod
     def reload(cls):
         """Recarga la configuracion desde el YAML."""
@@ -129,6 +135,11 @@ class PrinterConfig:
                                         default=["/dev/ttyUSB*", "/dev/ttyACM*"])
         cls.SERIAL_RECONNECT_MS = _get(_cfg, "serial", "reconnect_ms", default=5000)
         cls.SERIAL_TIMEOUT_S = _get(_cfg, "serial", "timeout_s", default=2.0)
+        # === Imagen ===
+        cls.IMG_EPSILON_PCT = _get(_cfg, "imagen", "epsilon_pct", default=0.005)
+        cls.IMG_UMBRAL_BINARIO = _get(_cfg, "imagen", "umbral_binario", default=0)
+        cls.IMG_AREA_MINIMA_PX = _get(_cfg, "imagen", "area_minima_px", default=50)
+        cls.IMG_MARGEN_MM = _get(_cfg, "imagen", "margen_imagen_mm", default=2.0)
 
     @classmethod
     def save(cls):
@@ -177,6 +188,12 @@ class PrinterConfig:
                 'reconnect_ms': int(cls.SERIAL_RECONNECT_MS),
                 'timeout_s': float(cls.SERIAL_TIMEOUT_S),
             },
+            'imagen': {
+                'epsilon_pct': float(cls.IMG_EPSILON_PCT),
+                'umbral_binario': int(cls.IMG_UMBRAL_BINARIO),
+                'area_minima_px': int(cls.IMG_AREA_MINIMA_PX),
+                'margen_imagen_mm': float(cls.IMG_MARGEN_MM),
+            },
         }
         # Escribir con comentarios de cabecera
         header = (
@@ -195,8 +212,9 @@ class PrinterConfig:
                 'viaje': '# === Viaje ===',
                 'linea': '# === Linea de crema ===',
                 'serial': '# === Serial ===',
+                'imagen': '# === Imagen ===',
             }
-            for key in ['alfajor', 'impresion', 'extrusor', 'viaje', 'linea', 'serial']:
+            for key in ['alfajor', 'impresion', 'extrusor', 'viaje', 'linea', 'serial', 'imagen']:
                 f.write(f"{section_comments[key]}\n")
                 yaml.dump({key: data[key]}, f, default_flow_style=False,
                           allow_unicode=True, sort_keys=False)
@@ -205,6 +223,9 @@ class PrinterConfig:
 
 class SystemConfig:
     """Configuracion de la aplicacion (UI, patrones, etc)."""
+
+    # === Ruta de assets ===
+    ASSETS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'assets')
 
     # === Dimensiones de pantalla ===
     SCREEN_WIDTH = 1024
