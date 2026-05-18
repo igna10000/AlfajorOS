@@ -208,9 +208,31 @@ class GCodeGenerator:
         if patron:
             g.comment(f"=== Patron: {patron} ===")
             pg = PathGenerator(self.radio, grosor_pct)
-            path = pg.generar(patron)
-            self._path_to_gcode(g, path)
-            g.blank()
+            if "cilindro" in patron.lower():
+                # --- Logica especial para Cilindro 3D (Multi-capa) ---
+                num_capas = PC.CILINDRO_NUM_CAPAS
+                z_por_capa = PC.CILINDRO_Z_POR_CAPA_MM
+                
+                path_capa = pg.generar_cilindro_capa()
+                
+                for capa in range(num_capas):
+                    g.comment(f"--- Capa {capa + 1}/{num_capas} ---")
+                    
+                    # Calcular Z para esta capa
+                    z_actual = self.z_print + (capa * z_por_capa)
+                    
+                    # Mover a la altura de la capa actual
+                    if capa > 0:
+                         g.move_z(z_actual)
+                    
+                    # Imprimir el path de la capa
+                    self._path_to_gcode(g, path_capa)
+                    g.blank()
+            else:
+                # --- Patrones normales (Una capa) ---
+                path = pg.generar(patron)
+                self._path_to_gcode(g, path)
+                g.blank()
 
         # Texto — usa PathGenerator
         if texto:

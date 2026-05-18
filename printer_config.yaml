@@ -70,3 +70,10 @@ imagen:
   # Margen interno respecto al borde del alfajor (mm)
   margen_imagen_mm: 2.0
 
+# === Cilindro 3D ===
+cilindro:
+  # Numero de capas a imprimir
+  num_capas: 10
+  # Incremento de Z entre capas (mm)   2
+  z_por_capa_mm: 1.5
+

@@ -138,6 +138,9 @@ class PathGenerator:
             return self._p_relleno()
         elif "borde" in p:
             return self._p_borde()
+        elif "cilindro" in p:
+            # Para preview: mostrar el borde circular (una capa)
+            return self._p_borde()
         else:
             return self._p_espiral()
 
@@ -152,6 +155,13 @@ class PathGenerator:
         """
         from backend.image_processor import ImageProcessor
         return ImageProcessor.imagen_a_path(image_path, self.radio)
+
+    def generar_cilindro_capa(self):
+        """Genera el path de UNA capa del cilindro: circulo cerrado en el borde.
+        El GCodeGenerator llama esto N veces, cambiando Z entre capas.
+        Retorna el mismo formato que generar(): list[list[tuple[float,float]]]
+        """
+        return self._p_borde()
 
     # ========================================================
     # Patrones

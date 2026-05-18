@@ -92,6 +92,10 @@ class PrinterConfig:
     IMG_AREA_MINIMA_PX = _get(_cfg, "imagen", "area_minima_px", default=50)
     IMG_MARGEN_MM = _get(_cfg, "imagen", "margen_imagen_mm", default=2.0)
 
+    # === Cilindro 3D ===
+    CILINDRO_NUM_CAPAS = _get(_cfg, "cilindro", "num_capas", default=5)
+    CILINDRO_Z_POR_CAPA_MM = _get(_cfg, "cilindro", "z_por_capa_mm", default=2.0)
+
     @classmethod
     def reload(cls):
         """Recarga la configuracion desde el YAML."""
@@ -142,6 +146,9 @@ class PrinterConfig:
         cls.IMG_UMBRAL_BINARIO = _get(_cfg, "imagen", "umbral_binario", default=0)
         cls.IMG_AREA_MINIMA_PX = _get(_cfg, "imagen", "area_minima_px", default=50)
         cls.IMG_MARGEN_MM = _get(_cfg, "imagen", "margen_imagen_mm", default=2.0)
+        # === Cilindro 3D ===
+        cls.CILINDRO_NUM_CAPAS = _get(_cfg, "cilindro", "num_capas", default=5)
+        cls.CILINDRO_Z_POR_CAPA_MM = _get(_cfg, "cilindro", "z_por_capa_mm", default=2.0)
 
     @classmethod
     def save(cls):
@@ -197,6 +204,10 @@ class PrinterConfig:
                 'area_minima_px': int(cls.IMG_AREA_MINIMA_PX),
                 'margen_imagen_mm': float(cls.IMG_MARGEN_MM),
             },
+            'cilindro': {
+                'num_capas': int(cls.CILINDRO_NUM_CAPAS),
+                'z_por_capa_mm': float(cls.CILINDRO_Z_POR_CAPA_MM),
+            },
         }
         # Escribir con comentarios de cabecera
         header = (
@@ -216,8 +227,9 @@ class PrinterConfig:
                 'linea': '# === Linea de crema ===',
                 'serial': '# === Serial ===',
                 'imagen': '# === Imagen ===',
+                'cilindro': '# === Cilindro 3D ===',
             }
-            for key in ['alfajor', 'impresion', 'extrusor', 'viaje', 'linea', 'serial', 'imagen']:
+            for key in ['alfajor', 'impresion', 'extrusor', 'viaje', 'linea', 'serial', 'imagen', 'cilindro']:
                 f.write(f"{section_comments[key]}\n")
                 yaml.dump({key: data[key]}, f, default_flow_style=False,
                           allow_unicode=True, sort_keys=False)
@@ -273,6 +285,7 @@ class SystemConfig:
         "Espiral clasica", "Zigzag horizontal", "Circulos concentricos",
         "Rejilla cruzada", "Estrella", "Corazon",
         "Ondas paralelas", "Relleno completo", "Borde decorativo",
+        "Cilindro 3D",
     ]
 
     PATRONES_PRO = [
