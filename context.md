@@ -54,6 +54,11 @@ AlfajorOS/
 - Soporte de impresión de cilindros en 3D (múltiples capas configurables).
 - Retracción de fin de impresión obligatoria.
 - Modulo de traducción de Imágenes a G-Code incorporado al flujo de selección UI.
+- **Matriz 3x3 Interactiva**: `AlfajorCanvas` soporta vista y renderizado de bandeja completa de 9 alfajores con diseños independientes en paralelo, renderizando el progreso de la extrusión sincronizado con la máquina real.
+- **Asistente de Calibración Inteligente (`CalibrationWizard`)**: Módulo interactivo con UI táctil para viajar automáticamente a las coordenadas tentativas de la bandeja y establecer con precisión (mediante Jog) los centros XY y alturas Z independientes para cada posición, garantizando tolerancia a variaciones en la superficie.
+- **Prevención de Colisiones Z-Hop (Safe Z)**: Algoritmo de viaje (travel) dinámico que calcula la altura Z segura `max(current_z, target_z)` en todo momento, evitando estrellar la boquilla contra construcciones 3D previas al viajar o estacionar.
+- **Robustez Serial (M114)**: Sincronización estricta del buffer serial y vaciado antes de leer comandos síncronos de la impresora para evitar desfaces en las posiciones devueltas.
+- **Recarga de Configuración en Caliente (`PC.reload()`)**: Sincronización en tiempo real de `printer_config.yaml` antes de iniciar el trabajo, posibilitando ajustes físicos sin reiniciar AlfajorOS.
 
 ---
 *NOTA AL AGENTE: Debes modificar y actualizar este archivo cada vez que el usuario agregue una nueva característica sustancial o modifique la arquitectura, para que este contexto se mantenga "vivo" y preciso.*
