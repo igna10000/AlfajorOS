@@ -173,6 +173,7 @@ class GCodeGenerator:
 
         # Recargar config desde YAML para garantizar centros actualizados
         PC.reload()
+        self.radio = PC.ALFAJOR_RADIO_MM  # Actualizar radio tras reload (incluye margen)
 
         # Configurar matriz de centros
         if modo_serie:
