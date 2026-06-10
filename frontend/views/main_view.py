@@ -19,6 +19,7 @@ from frontend.resources.ui_loader import load_ui
 from frontend.widgets.animated_button import aplicar_animacion_pulso
 from frontend.widgets.alfajor_canvas import AlfajorCanvas
 from frontend.widgets.printer_indicator import PrinterIndicator
+from frontend.widgets.jog_control import JogControlWidget
 from backend.config import SystemConfig
 from backend.extruder import ExtruderEngine
 from backend.printer import PrinterConnection
@@ -71,6 +72,9 @@ class MainView(QMainWindow):
         # Añadir columna izquierda con Texto/Patrón/Limpiar
         self._setup_columna_izquierda()
 
+        # Añadir columna derecha con controles de movimiento
+        self._setup_columna_derecha()
+
         # Ocultar botones de Texto y Figura del .ui (se reemplazan por la columna)
         self._ocultar_botones_ui()
 
@@ -81,6 +85,7 @@ class MainView(QMainWindow):
         self._aplicar_animaciones()
         self._configurar_estado_inicial()
         self._imagen_path = ""
+        self._manual_z0_set = False
 
     def _setup_alfajor_canvas(self):
         """Reemplaza el openGLWidget placeholder con AlfajorCanvas."""
@@ -221,6 +226,44 @@ class MainView(QMainWindow):
                     return True
         return False
 
+    def _setup_columna_derecha(self):
+        """Añade columna derecha con controles manuales XYZ y Z0."""
+        self.jog_control = JogControlWidget(self.printer)
+        self.jog_control.z0_set.connect(self._on_z0_set)
+        self.jog_control.homed_all.connect(self._on_homed_all)
+        
+        # Insertar la columna a la derecha del canvas en su layout padre
+        canvas_parent = self.canvas.parentWidget()
+        if canvas_parent and canvas_parent.layout():
+            layout = canvas_parent.layout()
+            for i in range(layout.count()):
+                item = layout.itemAt(i)
+                if item.widget() == self.canvas:
+                    layout.insertWidget(i + 1, self.jog_control)
+                    break
+            else:
+                self._insert_after_recursive(layout, self.canvas, self.jog_control)
+
+    def _insert_after_recursive(self, layout, target, new_widget):
+        for i in range(layout.count()):
+            item = layout.itemAt(i)
+            if item.widget() == target:
+                layout.insertWidget(i + 1, new_widget)
+                return True
+            elif item.layout():
+                if self._insert_after_recursive(item.layout(), target, new_widget):
+                    return True
+        return False
+
+    def _on_z0_set(self):
+        self._manual_z0_set = True
+
+    def _on_homed_all(self):
+        self._manual_z0_set = False
+        self._gcode_meta = None
+        self.pushButton_4.setEnabled(True)
+        self.pushButton_5.setEnabled(False)
+
     def _ocultar_botones_ui(self):
         """Elimina botones de Texto, Figura y PRO del .ui (reemplazados por columna)."""
         for attr in ['pushButton_3', 'pushButton_2', 'pushButton']:
@@ -268,6 +311,11 @@ class MainView(QMainWindow):
         aplicar_animacion_pulso(self.btn_limpiar)
         aplicar_animacion_pulso(self.btn_motores)
         aplicar_animacion_pulso(self.btn_pro)
+        
+        # Botones Jog Control
+        for btn in self.jog_control.get_animable_buttons():
+            aplicar_animacion_pulso(btn)
+            
         # Botones del .ui
         aplicar_animacion_pulso(self.pushButton_4)
         aplicar_animacion_pulso(self.pushButton_5)
@@ -354,6 +402,33 @@ class MainView(QMainWindow):
             )
             return
 
+        # --- Dialogo de Purga Inicial (Extrusion) ---
+        from frontend.widgets.jog_control import RetractionDialog
+        from backend.config import PrinterConfig as PC
+        
+        dialog_purga = RetractionDialog(
+            self,
+            default_val=PC.PURGA_INICIAL_MM,
+            prompt_text="Ajuste la distancia de EXTRUSIÓN INICIAL (Purga):"
+        )
+        dialog_purga.setWindowTitle("Extrusión Inicial")
+        if not dialog_purga.exec():
+            return
+            
+        purga_inicial = dialog_purga.get_value()
+
+        # --- Dialogo de Retraccion Final ---
+        dialog_ret = RetractionDialog(
+            self,
+            default_val=PC.FIN_RETRACCION_MM,
+            prompt_text="Ajuste la distancia a RETRAER al finalizar la impresión:"
+        )
+        dialog_ret.setWindowTitle("Retracción Final")
+        if not dialog_ret.exec():
+            return
+            
+        fin_retraccion = dialog_ret.get_value()
+
         # Generar G-Code
         gen = GCodeGenerator()
         gcode, meta = gen.generar_completo(
@@ -361,6 +436,9 @@ class MainView(QMainWindow):
             texto=self.canvas._texto or "",
             grosor_pct=self.canvas._grosor,
             imagen_path=self._imagen_path or "",
+            manual_z0=self._manual_z0_set,
+            fin_retraccion_mm=fin_retraccion,
+            purga_inicial_mm=purga_inicial
         )
 
         # Guardar metadata para mapeo de progreso

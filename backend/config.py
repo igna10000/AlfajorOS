@@ -50,6 +50,7 @@ class PrinterConfig:
     # === Impresion ===
     Z_ALTURA_MM = _get(_cfg, "impresion", "z_altura_mm", default=1.0)
     Z_OFFSET_MM = _get(_cfg, "impresion", "z_offset_mm", default=0.0)
+    Z_OFFSET_TAPA_MM = _get(_cfg, "impresion", "z_offset_tapa_mm", default=-13.0)
     VEL_IMPRESION = _get(_cfg, "impresion", "velocidad_impresion", default=1200)
     VEL_VIAJE = _get(_cfg, "impresion", "velocidad_viaje", default=3000)
     VEL_Z = _get(_cfg, "impresion", "velocidad_z", default=600)
@@ -110,6 +111,7 @@ class PrinterConfig:
         # === Impresion ===
         cls.Z_ALTURA_MM = _get(_cfg, "impresion", "z_altura_mm", default=1.0)
         cls.Z_OFFSET_MM = _get(_cfg, "impresion", "z_offset_mm", default=0.0)
+        cls.Z_OFFSET_TAPA_MM = _get(_cfg, "impresion", "z_offset_tapa_mm", default=-13.0)
         cls.VEL_IMPRESION = _get(_cfg, "impresion", "velocidad_impresion", default=1200)
         cls.VEL_VIAJE = _get(_cfg, "impresion", "velocidad_viaje", default=3000)
         cls.VEL_Z = _get(_cfg, "impresion", "velocidad_z", default=600)
@@ -163,6 +165,7 @@ class PrinterConfig:
             'impresion': {
                 'z_altura_mm': float(cls.Z_ALTURA_MM),
                 'z_offset_mm': float(cls.Z_OFFSET_MM),
+                'z_offset_tapa_mm': float(cls.Z_OFFSET_TAPA_MM),
                 'velocidad_impresion': int(cls.VEL_IMPRESION),
                 'velocidad_viaje': int(cls.VEL_VIAJE),
                 'velocidad_z': int(cls.VEL_Z),

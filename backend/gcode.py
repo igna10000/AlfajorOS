@@ -35,8 +35,15 @@ class GCodeBuilder:
     def raw(self, cmd):
         self.lines.append(cmd)
 
-    def home(self):
-        self.raw("G28")
+    def home(self, manual_z0=False):
+        if manual_z0:
+            self.comment("Homing omitido (preservando Z0 manual)")
+            self.raw("G91")
+            self.raw("G1 Z5 F600")
+            self.raw("G90")
+            # Se omite G28 X Y porque en Marlin G28 borra el offset G92 Z0
+        else:
+            self.raw("G28")
 
     def set_absolute(self):
         self.raw("G90")
@@ -55,6 +62,10 @@ class GCodeBuilder:
     def move_z(self, z):
         self.raw(f"G1 Z{z:.2f} F{PC.VEL_Z}")
         self.current_z = z
+
+    def dwell(self, seconds):
+        """Pausa la ejecucion por n segundos."""
+        self.raw(f"G4 P{int(seconds * 1000)}")
 
     def travel(self, x, y):
         """Movimiento sin extruir — continuo, sin detener XY.
@@ -98,21 +109,15 @@ class GCodeBuilder:
         self.raw(f"G1 E{self.e_total:.4f} F{PC.VEL_RETRACCION}")
         self.retracted = False
 
-    def park(self):
+    def park(self, fin_retraccion_mm=None):
         """Secuencia de finalizacion segura:
-        1. Retraccion forzada (siempre, independiente de RETRACCION_HABILITADA)
-           Evita que la crema gotee al levantar la boquilla.
-        2. Movimiento simultaneo X+Y+Z en un solo G0 rapido:
-           la boquilla sube mientras se desplaza lateralmente.
+        1. Movimiento simultaneo X+Y+Z en un solo G0 rapido al punto de reposo.
+        2. Retraccion forzada en el punto de reposo, segun solicitud del usuario.
         """
-        # --- Paso 1: Retraccion forzada al finalizar ---
-        if PC.FIN_RETRACCION_MM > 0 and not self.retracted:
-            self.comment("Retraccion final (evita goteo al levantar)")
-            self.e_total -= PC.FIN_RETRACCION_MM
-            self.raw(f"G1 E{self.e_total:.4f} F{PC.VEL_RETRACCION}")
-            self.retracted = True
+        if fin_retraccion_mm is None:
+            fin_retraccion_mm = PC.FIN_RETRACCION_MM
 
-        # --- Paso 2: Subir Z + desplazar XY simultaneamente (un solo comando) ---
+        # --- Paso 1: Subir Z + desplazar XY simultaneamente al reposo ---
         self.comment(
             f"Estacionamiento: X={PC.POS_FINAL_X:.1f} "
             f"Y={PC.POS_FINAL_Y:.1f} "
@@ -122,9 +127,17 @@ class GCodeBuilder:
             f"G0 X{PC.POS_FINAL_X:.1f} Y{PC.POS_FINAL_Y:.1f} "
             f"Z{PC.POS_FINAL_Z:.1f} F{PC.VEL_VIAJE}"
         )
+        self.raw("M211 S1") # Reactivar limites de software tras estacionar
         self.current_x = PC.POS_FINAL_X
         self.current_y = PC.POS_FINAL_Y
         self.current_z = PC.POS_FINAL_Z
+
+        # --- Paso 2: Retraccion forzada al finalizar (en el punto de reposo) ---
+        if fin_retraccion_mm > 0 and not self.retracted:
+            self.comment(f"Retraccion final: {fin_retraccion_mm} mm (en reposo)")
+            self.e_total -= fin_retraccion_mm
+            self.raw(f"G1 E{self.e_total:.4f} F{PC.VEL_RETRACCION}")
+            self.retracted = True
 
     def build(self):
         return "\n".join(self.lines) + "\n"
@@ -148,7 +161,7 @@ class GCodeGenerator:
         self.radio = PC.ALFAJOR_RADIO_MM
         self.z_print = PC.Z_ALTURA_MM + PC.Z_OFFSET_MM
 
-    def generar_completo(self, patron="", texto="", grosor_pct=50, imagen_path=""):
+    def generar_completo(self, patron="", texto="", grosor_pct=50, imagen_path="", manual_z0=False, fin_retraccion_mm=None, purga_inicial_mm=None):
         """
         Genera G-Code completo para un patron y/o texto.
         Retorna (gcode_str, metadata) donde metadata contiene:
@@ -157,6 +170,9 @@ class GCodeGenerator:
           - total_lines: total de lineas de codigo
         """
         g = GCodeBuilder()
+
+        # Configurar altura de impresion (sumando el offset de altura)
+        self.z_print = PC.Z_ALTURA_MM + PC.Z_OFFSET_MM
 
         # Header
         g.comment("=" * 50)
@@ -170,24 +186,29 @@ class GCodeGenerator:
         g.blank()
 
         # Inicializacion
-        g.home()
+        g.home(manual_z0)
         g.set_absolute()
         g.cold_extrusion()
+        g.raw("M211 S0") # Deshabilitar limites de software para permitir Z negativo (por offset de tapa)
         g.reset_extruder()
         g.blank()
 
         # Mover a posicion de purga
         g.comment("Posicionando para purga")
-        g.move_z(PC.PURGA_POS_Z + PC.Z_HOP_MM)
+        purga_z = 5.0 if manual_z0 else PC.PURGA_POS_Z
+        g.move_z(purga_z + PC.Z_HOP_MM)
         g.raw(f"G0 X{PC.PURGA_POS_X:.1f} Y{PC.PURGA_POS_Y:.1f} F{PC.VEL_VIAJE}")
-        g.move_z(PC.PURGA_POS_Z)
+        g.move_z(purga_z)
         g.blank()
 
         # Purga
-        if PC.PURGA_INICIAL_MM > 0:
+        if purga_inicial_mm is None:
+            purga_inicial_mm = PC.PURGA_INICIAL_MM
+
+        if purga_inicial_mm > 0:
             g.comment("Purga inicial")
-            g.e_total += PC.PURGA_INICIAL_MM
-            g.raw(f"G1 E{g.e_total:.4f} F300")
+            g.e_total += purga_inicial_mm
+            g.raw(f"G1 E{g.e_total:.4f} F600")
             g.reset_extruder()
             g.retracted = True  # Post-purga: considerar retraido para evitar E negativo
             g.blank()
@@ -199,6 +220,9 @@ class GCodeGenerator:
         g.current_y = self.cy
         g.current_z = self.z_print
         g.retracted = False
+        g.blank()
+        # g.comment("Esperar 6 segundos antes de comenzar a extruir")
+        # g.dwell(6)
         g.blank()
 
         # === Marca inicio de dibujo ===
@@ -255,7 +279,7 @@ class GCodeGenerator:
 
         # Footer
         g.comment("=== Fin ===")
-        g.park()
+        g.park(fin_retraccion_mm)
         g.blank()
 
         metadata = {

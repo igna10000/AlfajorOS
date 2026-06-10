@@ -5,15 +5,15 @@
 
 # === Alfajor ===
 alfajor:
-  diametro_mm: 70.0
+  diametro_mm: 67.0
   margen_mm: 3.0
   centro_x: 145.0
   centro_y: 150.0
 
 # === Impresion ===
 impresion:
-  z_altura_mm: 0.5
-  z_offset_mm: 4.35
+  z_altura_mm: 0.4
+  z_offset_mm: 1.0
   velocidad_impresion: 800
   velocidad_viaje: 3000
   velocidad_z: 600
@@ -24,7 +24,7 @@ extrusor:
   diametro_boquilla_mm: 1.5
   flujo_e_por_mm: 0.16
   retraccion_habilitada: false
-  retraccion_mm: 200.0
+  retraccion_mm: 150.0
   velocidad_retraccion: 20000
   desretraccion_mm: 54.0
   purga_inicial_mm: 120.0
@@ -73,7 +73,7 @@ imagen:
 # === Cilindro 3D ===
 cilindro:
   # Numero de capas a imprimir
-  num_capas: 10
+  num_capas: 7
   # Incremento de Z entre capas (mm)   2
   z_por_capa_mm: 1.5
 
