@@ -117,20 +117,20 @@ class GCodeBuilder:
         if fin_retraccion_mm is None:
             fin_retraccion_mm = PC.FIN_RETRACCION_MM
 
-        # --- Paso 1: Subir Z + desplazar XY simultaneamente al reposo ---
+        # --- Paso 1: Subir Z seguro y luego mover XY ---
+        safe_z = max(PC.POS_FINAL_Z, self.current_z + PC.Z_HOP_MM * 2)
         self.comment(
-            f"Estacionamiento: X={PC.POS_FINAL_X:.1f} "
-            f"Y={PC.POS_FINAL_Y:.1f} "
-            f"Z={PC.POS_FINAL_Z:.1f} (simultaneo)"
+            f"Estacionamiento: Subir Z={safe_z:.1f} seguro, "
+            f"XY={PC.POS_FINAL_X:.1f},{PC.POS_FINAL_Y:.1f}"
         )
+        self.raw(f"G1 Z{safe_z:.1f} F{PC.VEL_Z}")
         self.raw(
-            f"G0 X{PC.POS_FINAL_X:.1f} Y{PC.POS_FINAL_Y:.1f} "
-            f"Z{PC.POS_FINAL_Z:.1f} F{PC.VEL_VIAJE}"
+            f"G0 X{PC.POS_FINAL_X:.1f} Y{PC.POS_FINAL_Y:.1f} F{PC.VEL_VIAJE}"
         )
         self.raw("M211 S1") # Reactivar limites de software tras estacionar
         self.current_x = PC.POS_FINAL_X
         self.current_y = PC.POS_FINAL_Y
-        self.current_z = PC.POS_FINAL_Z
+        self.current_z = safe_z
 
         # --- Paso 2: Retraccion forzada al finalizar (en el punto de reposo) ---
         if fin_retraccion_mm > 0 and not self.retracted:
@@ -239,7 +239,8 @@ class GCodeGenerator:
             g.comment(f"--- Iniciando Alfajor {i+1} en X:{cx:.1f} Y:{cy:.1f} Z:{self.z_print:.2f} ---")
             
             # Viaje al centro del alfajor con Z-Hop
-            g.move_z(self.z_print + PC.Z_HOP_MM)
+            safe_z = max(g.current_z + PC.Z_HOP_MM, self.z_print + PC.Z_HOP_MM)
+            g.move_z(safe_z)
             g.raw(f"G0 X{self.cx:.1f} Y{self.cy:.1f} F{PC.VEL_VIAJE}")
             g.move_z(self.z_print)
             g.current_x = self.cx
