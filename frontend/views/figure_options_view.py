@@ -62,24 +62,7 @@ class FigureOptionsView(QMainWindow):
         self.list_patrones.currentRowChanged.connect(self._on_patron_seleccionado)
         left_layout.addWidget(self.list_patrones, stretch=1)
 
-        # Slider de grosor
-        lbl_grosor = QLabel("Grosor de crema:")
-        lbl_grosor.setFont(QFont("Purisa", 11))
-        lbl_grosor.setStyleSheet("color: #e0e0e0;")
-        left_layout.addWidget(lbl_grosor)
-
-        self.slider_grosor = QSlider(Qt.Horizontal)
-        self.slider_grosor.setMinimum(10)
-        self.slider_grosor.setMaximum(100)
-        self.slider_grosor.setValue(50)
-        self.slider_grosor.valueChanged.connect(self._on_grosor_changed)
-        left_layout.addWidget(self.slider_grosor)
-
-        self.lbl_grosor_val = QLabel("50%")
-        self.lbl_grosor_val.setAlignment(Qt.AlignCenter)
-        self.lbl_grosor_val.setFont(QFont("Purisa", 10))
-        self.lbl_grosor_val.setStyleSheet("color: #aaa;")
-        left_layout.addWidget(self.lbl_grosor_val)
+        # Slider de grosor eliminado (grosor determinado por la boquilla)
 
         # Botones
         h_btns = QHBoxLayout()
@@ -156,18 +139,6 @@ class FigureOptionsView(QMainWindow):
             QListWidget::item:hover {
                 background-color: #3d6e68;
             }
-            QSlider::groove:horizontal {
-                background: #555;
-                height: 30px;
-                border-radius: 15px;
-            }
-            QSlider::handle:horizontal {
-                background: #4DB6AC;
-                width: 56px;
-                height: 56px;
-                margin: -18px 0;
-                border-radius: 28px;
-            }
             QPushButton {
                 background-color: #4DB6AC;
                 color: white;
@@ -186,11 +157,7 @@ class FigureOptionsView(QMainWindow):
         if row >= 0:
             self._patron_actual = SystemConfig.PATRONES[row]
             self.preview_canvas.set_patron(self._patron_actual)
-            self.preview_canvas.set_grosor(self.slider_grosor.value())
-
-    def _on_grosor_changed(self, value):
-        self.lbl_grosor_val.setText(f"{value}%")
-        self.preview_canvas.set_grosor(value)
+            self.preview_canvas.set_grosor(50)
 
     def _on_atras(self):
         self.actividad_detectada.emit()
@@ -208,14 +175,12 @@ class FigureOptionsView(QMainWindow):
             QMessageBox.warning(self, "Advertencia",
                                 "Seleccione un patrón decorativo.")
             return
-        grosor = self.slider_grosor.value()
+        grosor = 50
         self.figura_configurada.emit(self._patron_actual, grosor)
         self.hide()
 
     def reset(self):
         self.list_patrones.clearSelection()
-        self.slider_grosor.setValue(50)
-        self.lbl_grosor_val.setText("50%")
         self._patron_actual = ""
         self.preview_canvas.reset()
 

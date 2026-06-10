@@ -84,7 +84,6 @@ class MainView(QMainWindow):
         self._conectar_printer()
         self._aplicar_animaciones()
         self._configurar_estado_inicial()
-        self._imagen_path = ""
         self._manual_z0_set = False
 
     def _setup_alfajor_canvas(self):
@@ -161,6 +160,28 @@ class MainView(QMainWindow):
 
         left_layout.addStretch(1)
 
+        # Botón MODO (Individual / Serie)
+        self.btn_modo = QPushButton("MODO:\nINDIVIDUAL")
+        self.btn_modo.setMinimumSize(90, 65)
+        self.btn_modo.setFont(btn_font)
+        self.btn_modo.setStyleSheet("""
+            QPushButton {
+                background-color: #5C6BC0;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                font-weight: bold;
+                font-family: Purisa;
+            }
+            QPushButton:checked {
+                background-color: #FF5722;
+            }
+        """)
+        self.btn_modo.setCheckable(True)
+        self.btn_modo.clicked.connect(self._on_toggle_modo)
+        left_layout.addWidget(self.btn_modo)
+        self.modo_serie = False
+
         # Botón MOTORES (liberar motores)
         self.btn_motores = QPushButton("MOTORES\nOFF")
         self.btn_motores.setMinimumSize(90, 55)
@@ -227,10 +248,32 @@ class MainView(QMainWindow):
         return False
 
     def _setup_columna_derecha(self):
-        """Añade columna derecha con controles manuales XYZ y Z0."""
+        """Añade columna derecha oculta. El botón Jog ahora es flotante."""
+        self._right_col = QWidget()
+        r_layout = QVBoxLayout(self._right_col)
+        r_layout.setContentsMargins(0,0,0,0)
+        
         self.jog_control = JogControlWidget(self.printer)
         self.jog_control.z0_set.connect(self._on_z0_set)
         self.jog_control.homed_all.connect(self._on_homed_all)
+        self.jog_control.hide()
+        r_layout.addWidget(self.jog_control)
+        r_layout.addStretch()
+        
+        # Botón flotante para el Jog, sobre el Canvas, esquina inferior derecha
+        self.btn_toggle_jog = QPushButton("⚙️", self.canvas)
+        self.btn_toggle_jog.setFixedSize(45, 45)
+        self.btn_toggle_jog.setStyleSheet("""
+            QPushButton {
+                background-color: rgba(60, 60, 60, 200);
+                color: white;
+                border-radius: 22px;
+                font-size: 20px;
+                border: 2px solid #4DB6AC;
+            }
+            QPushButton:hover { background-color: rgba(77, 182, 172, 220); }
+        """)
+        self.btn_toggle_jog.clicked.connect(self._toggle_jog)
         
         # Insertar la columna a la derecha del canvas en su layout padre
         canvas_parent = self.canvas.parentWidget()
@@ -239,10 +282,24 @@ class MainView(QMainWindow):
             for i in range(layout.count()):
                 item = layout.itemAt(i)
                 if item.widget() == self.canvas:
-                    layout.insertWidget(i + 1, self.jog_control)
+                    layout.insertWidget(i + 1, self._right_col)
                     break
             else:
-                self._insert_after_recursive(layout, self.canvas, self.jog_control)
+                self._insert_after_recursive(layout, self.canvas, self._right_col)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        # Posicionar el botón flotante en la esquina inferior derecha del canvas
+        if hasattr(self, 'btn_toggle_jog') and self.canvas:
+            margin = 15
+            self.btn_toggle_jog.move(
+                self.canvas.width() - self.btn_toggle_jog.width() - margin,
+                self.canvas.height() - self.btn_toggle_jog.height() - margin
+            )
+
+    def _toggle_jog(self):
+        v = not self.jog_control.isVisible()
+        self.jog_control.setVisible(v)
 
     def _insert_after_recursive(self, layout, target, new_widget):
         for i in range(layout.count()):
@@ -342,6 +399,31 @@ class MainView(QMainWindow):
         self.abrir_pro.emit()
         self.statusbar.showMessage("Abriendo Modo PRO...")
 
+    def _on_toggle_modo(self):
+        self.actividad_detectada.emit()
+        self.modo_serie = self.btn_modo.isChecked()
+        self.canvas.set_modo_serie(self.modo_serie)
+        if self.modo_serie:
+            self.btn_modo.setText("MODO:\nSERIE 3x3")
+            self.statusbar.showMessage("Modo cambiado a: SERIE 3x3")
+            self.btn_toggle_jog.show()
+            
+            # Preguntar si usar malla o recalibrar
+            msg = QMessageBox(self)
+            msg.setWindowTitle("Modo Serie 3x3")
+            msg.setText("¿Desea usar la malla de calibración guardada (valores YAML) o recalibrar los 9 alfajores?")
+            btn_usar = msg.addButton("Usar Guardada", QMessageBox.AcceptRole)
+            btn_recal = msg.addButton("Recalibrar Malla", QMessageBox.ActionRole)
+            msg.exec()
+            if msg.clickedButton() == btn_recal:
+                from frontend.widgets.calibration_wizard import CalibrationWizard
+                wizard = CalibrationWizard(self.printer, self)
+                wizard.exec()
+        else:
+            self.btn_modo.setText("MODO:\nINDIVIDUAL")
+            self.statusbar.showMessage("Modo cambiado a: INDIVIDUAL")
+            self.btn_toggle_jog.show()
+
     def _on_stop(self):
         self.actividad_detectada.emit()
         self.printer.stop_sending()
@@ -375,7 +457,11 @@ class MainView(QMainWindow):
             self.impresion_terminada.emit()
         self.engine.reset()
         self.canvas.reset()
-        self._imagen_path = ""
+        # Resetear modo serie
+        self.modo_serie = False
+        self.btn_modo.setChecked(False)
+        self.btn_modo.setText("MODO:\nINDIVIDUAL")
+        self.btn_toggle_jog.show()
         self.progressBar.setValue(0)
         self.pushButton_4.setEnabled(False)
         self.pushButton_5.setEnabled(True)
@@ -386,19 +472,30 @@ class MainView(QMainWindow):
         if self.engine.is_extruding:
             return
 
-        # Validar que haya algo configurado
-        if not self.canvas._patron and not self.canvas._texto and not self._imagen_path:
-            QMessageBox.warning(
-                self, "Sin configuracion",
-                "Debe seleccionar un patron decorativo o\ningresar un texto antes de extruir."
-            )
-            return
-
         # Validar conexion con impresora
         if not self.printer.is_connected:
             QMessageBox.warning(
                 self, "Sin impresora",
                 "La impresora no esta conectada.\nVerifique la conexion USB."
+            )
+            return
+
+        # Validar que al menos un alfajor tenga diseño
+        has_design = False
+        if self.modo_serie:
+            for c in self.canvas._configs:
+                if c["patron"] or c["texto"] or c["imagen_path"]:
+                    has_design = True
+                    break
+        else:
+            c = self.canvas._configs[0]
+            if c["patron"] or c["texto"] or c["imagen_path"]:
+                has_design = True
+
+        if not has_design:
+            QMessageBox.warning(
+                self, "Sin configuracion",
+                "Debe seleccionar un patrón decorativo o\ningresar un texto antes de extruir."
             )
             return
 
@@ -432,13 +529,11 @@ class MainView(QMainWindow):
         # Generar G-Code
         gen = GCodeGenerator()
         gcode, meta = gen.generar_completo(
-            patron=self.canvas._patron or "",
-            texto=self.canvas._texto or "",
-            grosor_pct=self.canvas._grosor,
-            imagen_path=self._imagen_path or "",
+            configs_serie=self.canvas._configs,
             manual_z0=self._manual_z0_set,
             fin_retraccion_mm=fin_retraccion,
-            purga_inicial_mm=purga_inicial
+            purga_inicial_mm=purga_inicial,
+            modo_serie=self.modo_serie
         )
 
         # Guardar metadata para mapeo de progreso
@@ -447,14 +542,23 @@ class MainView(QMainWindow):
         # Confirmar extrusion
         from backend.gcode import GCodeParser
         n_lineas = GCodeParser.contar_lineas(gcode)
-        img_nombre = os.path.basename(self._imagen_path) if self._imagen_path else ''
+        
+        if self.modo_serie:
+            resumen_str = "Matriz de 9 alfajores"
+        else:
+            c = self.canvas._configs[0]
+            img_nombre = os.path.basename(c["imagen_path"]) if c["imagen_path"] else ''
+            resumen_str = (
+                f"Patrón: {c['patron'] or 'ninguno'}\n"
+                f"Texto: {c['texto'] or 'ninguno'}\n"
+                f"Imagen: {img_nombre or 'ninguna'}"
+            )
+
         respuesta = QMessageBox.question(
             self, "Confirmar Extrusion",
             f"Se generaron {n_lineas} comandos G-Code.\n"
-            f"Patron: {self.canvas._patron or 'ninguno'}\n"
-            f"Texto: {self.canvas._texto or 'ninguno'}\n"
-            f"Imagen: {img_nombre or 'ninguna'}\n\n"
-            "Iniciar extrusion de crema?",
+            f"{resumen_str}\n\n"
+            "Iniciar extrusión de crema?",
             QMessageBox.Yes | QMessageBox.No
         )
         if respuesta == QMessageBox.Yes:
@@ -538,12 +642,10 @@ class MainView(QMainWindow):
         self.engine.set_patron(figura)
         self.canvas.set_patron(figura)
         self.canvas.set_grosor(tamano)
-        self._imagen_path = ""  # Limpiar imagen al seleccionar patrón
         self.statusbar.showMessage(f"Patrón: {figura} (grosor: {tamano}%)")
 
     def set_imagen(self, path):
         """Configura una imagen personalizada para imprimir."""
-        self._imagen_path = path
         self.canvas.set_imagen(path)
         self.statusbar.showMessage(
             f"Imagen: {os.path.basename(path)}"

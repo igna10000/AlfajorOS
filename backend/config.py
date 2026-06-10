@@ -45,12 +45,16 @@ class PrinterConfig:
     ALFAJOR_MARGEN_MM = _get(_cfg, "alfajor", "margen_mm", default=3.0)
     ALFAJOR_CENTRO_X = _get(_cfg, "alfajor", "centro_x", default=110.0)
     ALFAJOR_CENTRO_Y = _get(_cfg, "alfajor", "centro_y", default=110.0)
+    ALFAJOR_CENTRO_Z = _get(_cfg, "alfajor", "centro_z", default=11.0)
+    ALFAJORES_CENTROS = _get(_cfg, "alfajor", "matriz_centros", default=[
+        [35.0, 35.0, 11.0], [105.0, 35.0, 11.0], [175.0, 35.0, 11.0],
+        [35.0, 105.0, 11.0], [105.0, 105.0, 11.0], [175.0, 105.0, 11.0],
+        [35.0, 175.0, 11.0], [105.0, 175.0, 11.0], [175.0, 175.0, 11.0]
+    ])
     ALFAJOR_RADIO_MM = (ALFAJOR_DIAMETRO_MM / 2) - ALFAJOR_MARGEN_MM
 
     # === Impresion ===
     Z_ALTURA_MM = _get(_cfg, "impresion", "z_altura_mm", default=1.0)
-    Z_OFFSET_MM = _get(_cfg, "impresion", "z_offset_mm", default=0.0)
-    Z_OFFSET_TAPA_MM = _get(_cfg, "impresion", "z_offset_tapa_mm", default=-13.0)
     VEL_IMPRESION = _get(_cfg, "impresion", "velocidad_impresion", default=1200)
     VEL_VIAJE = _get(_cfg, "impresion", "velocidad_viaje", default=3000)
     VEL_Z = _get(_cfg, "impresion", "velocidad_z", default=600)
@@ -107,11 +111,15 @@ class PrinterConfig:
         cls.ALFAJOR_MARGEN_MM = _get(_cfg, "alfajor", "margen_mm", default=3.0)
         cls.ALFAJOR_CENTRO_X = _get(_cfg, "alfajor", "centro_x", default=110.0)
         cls.ALFAJOR_CENTRO_Y = _get(_cfg, "alfajor", "centro_y", default=110.0)
+        cls.ALFAJOR_CENTRO_Z = _get(_cfg, "alfajor", "centro_z", default=11.0)
+        cls.ALFAJORES_CENTROS = _get(_cfg, "alfajor", "matriz_centros", default=[
+            [35.0, 35.0, 11.0], [105.0, 35.0, 11.0], [175.0, 35.0, 11.0],
+            [35.0, 105.0, 11.0], [105.0, 105.0, 11.0], [175.0, 105.0, 11.0],
+            [35.0, 175.0, 11.0], [105.0, 175.0, 11.0], [175.0, 175.0, 11.0]
+        ])
         cls.ALFAJOR_RADIO_MM = (cls.ALFAJOR_DIAMETRO_MM / 2) - cls.ALFAJOR_MARGEN_MM
         # === Impresion ===
         cls.Z_ALTURA_MM = _get(_cfg, "impresion", "z_altura_mm", default=1.0)
-        cls.Z_OFFSET_MM = _get(_cfg, "impresion", "z_offset_mm", default=0.0)
-        cls.Z_OFFSET_TAPA_MM = _get(_cfg, "impresion", "z_offset_tapa_mm", default=-13.0)
         cls.VEL_IMPRESION = _get(_cfg, "impresion", "velocidad_impresion", default=1200)
         cls.VEL_VIAJE = _get(_cfg, "impresion", "velocidad_viaje", default=3000)
         cls.VEL_Z = _get(_cfg, "impresion", "velocidad_z", default=600)
@@ -161,11 +169,11 @@ class PrinterConfig:
                 'margen_mm': float(cls.ALFAJOR_MARGEN_MM),
                 'centro_x': float(cls.ALFAJOR_CENTRO_X),
                 'centro_y': float(cls.ALFAJOR_CENTRO_Y),
+                'centro_z': float(cls.ALFAJOR_CENTRO_Z),
+                'matriz_centros': [ [float(x), float(y), float(z)] for x, y, z in cls.ALFAJORES_CENTROS ],
             },
             'impresion': {
                 'z_altura_mm': float(cls.Z_ALTURA_MM),
-                'z_offset_mm': float(cls.Z_OFFSET_MM),
-                'z_offset_tapa_mm': float(cls.Z_OFFSET_TAPA_MM),
                 'velocidad_impresion': int(cls.VEL_IMPRESION),
                 'velocidad_viaje': int(cls.VEL_VIAJE),
                 'velocidad_z': int(cls.VEL_Z),

@@ -33,13 +33,14 @@ class AlfajorCanvas(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._progreso = 0
-        self._patron = ""
-        self._texto = ""
-        self._grosor = 50
-        self._imagen_path = ""
+        self._configs = [{"patron": "", "texto": "", "grosor": 50, "imagen_path": ""} for _ in range(9)]
+        self._idx_seleccionado = 0
+        self._modo_serie = False
+        
         self._imagen_path_cache = {}   # {path: list[segments]} — cache del pipeline
         self._animacion_t = 0.0
         self._printing = False
+        self._alfajor_rects = []
 
         # Vista
         self._view_mode = VIEW_TOP
@@ -64,10 +65,30 @@ class AlfajorCanvas(QWidget):
     # === Propiedades ===
 
     @property
+    def _patron(self): return self._configs[self._idx_seleccionado]["patron"]
+    @_patron.setter
+    def _patron(self, val): self._configs[self._idx_seleccionado]["patron"] = val
+
+    @property
+    def _texto(self): return self._configs[self._idx_seleccionado]["texto"]
+    @_texto.setter
+    def _texto(self, val): self._configs[self._idx_seleccionado]["texto"] = val
+
+    @property
+    def _grosor(self): return self._configs[self._idx_seleccionado]["grosor"]
+    @_grosor.setter
+    def _grosor(self, val): self._configs[self._idx_seleccionado]["grosor"] = val
+
+    @property
+    def _imagen_path(self): return self._configs[self._idx_seleccionado]["imagen_path"]
+    @_imagen_path.setter
+    def _imagen_path(self, val): self._configs[self._idx_seleccionado]["imagen_path"] = val
+
+    @property
     def _render_progreso(self):
         if self._printing:
             return self._progreso
-        elif self._patron or self._texto or self._imagen_path:
+        elif any(c["patron"] or c["texto"] or c["imagen_path"] for c in self._configs):
             return 100
         else:
             return 0
@@ -129,13 +150,16 @@ class AlfajorCanvas(QWidget):
 
         self.update()
 
+    def set_modo_serie(self, enable):
+        self._modo_serie = enable
+        self.update()
+
     def reset(self):
         """Reinicia todo: progreso, patrón, texto, vista."""
         self._progreso = 0
-        self._patron = ""
-        self._texto = ""
-        self._grosor = 50
-        self._imagen_path = ""
+        self._configs = [{"patron": "", "texto": "", "grosor": 50, "imagen_path": ""} for _ in range(9)]
+        self._idx_seleccionado = 0
+        self._modo_serie = False
         self._printing = False
         self._view_mode = VIEW_TOP
         self._free_tilt = 35.0
@@ -195,6 +219,15 @@ class AlfajorCanvas(QWidget):
                 self._view_mode = mode
                 self.update()
                 return
+        
+        # Verificar si se seleccionó un alfajor en modo serie
+        if self._modo_serie:
+            for rect, idx in reversed(self._alfajor_rects):
+                if rect.contains(pos):
+                    self._idx_seleccionado = idx
+                    self.update()
+                    return
+
         # Vista libre: iniciar drag
         if self._view_mode == VIEW_FREE:
             self._drag_last = pos
@@ -248,16 +281,21 @@ class AlfajorCanvas(QWidget):
             t.translate(-cx, -cy)
             painter.setTransform(t, True)
 
-        # Dibujar en orden de profundidad
-        self._dibujar_sombra(painter, cx, cy, scale, tilt)
-        self._dibujar_alfajor_3d(painter, cx, cy, scale, tilt)
+        self._alfajor_rects = []
 
-        rp = self._render_progreso
-        if rp > 0 and (self._patron or self._imagen_path):
-            self._dibujar_crema_3d(painter, cx, cy, scale, tilt, rp)
-
-        if self._texto and rp > 60:
-            self._dibujar_texto_3d(painter, cx, cy, scale, tilt, rp)
+        if not self._modo_serie:
+            self._dibujar_alfajor_individual(painter, cx, cy, scale, tilt, 0)
+        else:
+            grid_scale = scale / 2.8
+            # El diámetro visual base es 70 (r=35), por lo tanto spacing de 80 los deja muy cerca
+            spacing = 80 * grid_scale
+            # draw back-to-front. row 0 is back.
+            for row in range(3):
+                for col in range(3):
+                    idx = (2 - row) * 3 + col
+                    ox = (col - 1) * spacing
+                    oy = (row - 1) * spacing
+                    self._dibujar_alfajor_individual(painter, cx + ox, cy + oy, grid_scale, tilt, idx)
 
         painter.restore()  # Quitar rotación para UI
 
@@ -372,7 +410,32 @@ class AlfajorCanvas(QWidget):
         painter.setPen(QPen(QColor(230, 195, 150, 50), 2))
         painter.drawEllipse(QPointF(cx, cy - h_visual / 2), r - 3, max(ry - 3, r * 0.27))
 
-    def _dibujar_crema_3d(self, painter, cx, cy, scale, tilt, progreso):
+    def _dibujar_alfajor_individual(self, painter, cx, cy, scale, tilt, idx):
+        self._dibujar_sombra(painter, cx, cy, scale, tilt)
+        self._dibujar_alfajor_3d(painter, cx, cy, scale, tilt)
+
+        # Highlight selection if in serie mode
+        if self._modo_serie and idx == self._idx_seleccionado:
+            painter.setBrush(Qt.NoBrush)
+            painter.setPen(QPen(QColor(77, 182, 172, 150), 4 * scale))
+            r = 38 * scale
+            ry = r * math.cos(math.radians(tilt)) if tilt > 2 else r
+            painter.drawEllipse(QPointF(cx, cy), r, max(ry, r * 0.3))
+
+        c = self._configs[idx]
+        rp = self._render_progreso
+        if rp > 0 and (c["patron"] or c["imagen_path"]):
+            self._dibujar_crema_3d(painter, cx, cy, scale, tilt, rp, c)
+
+        if c["texto"] and rp > 60:
+            self._dibujar_texto_3d(painter, cx, cy, scale, tilt, rp, c)
+            
+        r_hit = 35 * scale
+        ry_hit = r_hit * math.cos(math.radians(tilt)) if tilt > 2 else r_hit
+        pt = painter.transform().map(QPointF(cx, cy))
+        self._alfajor_rects.append((QRectF(pt.x() - r_hit, pt.y() - ry_hit, r_hit*2, ry_hit*2), idx))
+
+    def _dibujar_crema_3d(self, painter, cx, cy, scale, tilt, progreso, config):
         """Dibuja la crema con volumen ENCIMA del alfajor."""
         from backend.config import PrinterConfig as PC
         r = 35 * scale
@@ -383,7 +446,7 @@ class AlfajorCanvas(QWidget):
         ratio = PC.ALFAJOR_RADIO_MM / radio_alfajor if radio_alfajor > 0 else 0.82
         radio_crema = r * ratio
 
-        grosor_linea = 3 + (self._grosor / 100) * 7
+        grosor_linea = 3 + (config["grosor"] / 100) * 7
         crema_height = 5 * scale
 
         alfajor_top_cy = cy - h_alfajor / 2
@@ -411,26 +474,26 @@ class AlfajorCanvas(QWidget):
                 painter.setPen(sombra_pen)
                 painter.setBrush(Qt.NoBrush)
                 self._dibujar_path(painter, cx, crema_surface_cy + offset,
-                                   radio_crema, progreso)
+                                   radio_crema, progreso, config)
 
         # Capa principal de crema
         color_crema = QColor(255, 245, 220, 245)
         pen = QPen(color_crema, grosor_linea, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
         painter.setPen(pen)
         painter.setBrush(Qt.NoBrush)
-        self._dibujar_path(painter, cx, crema_surface_cy, radio_crema, progreso)
+        self._dibujar_path(painter, cx, crema_surface_cy, radio_crema, progreso, config)
 
         # Highlight
         highlight_pen = QPen(QColor(255, 255, 252, 110), max(2, grosor_linea * 0.5),
                            Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
         painter.setPen(highlight_pen)
-        self._dibujar_path(painter, cx, crema_surface_cy - 1.5, radio_crema, progreso)
+        self._dibujar_path(painter, cx, crema_surface_cy - 1.5, radio_crema, progreso, config)
 
         painter.restore()
 
-    def _dibujar_texto_3d(self, painter, cx, cy, scale, tilt, progreso):
+    def _dibujar_texto_3d(self, painter, cx, cy, scale, tilt, progreso, config):
         """Dibuja texto con extrusión 3D usando STROKE_FONT (igual que G-Code)."""
-        if not self._texto:
+        if not config["texto"]:
             return
 
         from backend.config import PrinterConfig as PC
@@ -456,8 +519,8 @@ class AlfajorCanvas(QWidget):
             painter.setTransform(t, True)
 
         # Generar path de texto con PathGenerator
-        pg = PathGenerator(PC.ALFAJOR_RADIO_MM, self._grosor)
-        text_path = pg.generar_texto(self._texto)
+        pg = PathGenerator(PC.ALFAJOR_RADIO_MM, config["grosor"])
+        text_path = pg.generar_texto(config["texto"])
         if not text_path:
             painter.restore()
             return
@@ -471,7 +534,7 @@ class AlfajorCanvas(QWidget):
         # Clip por progreso
         clipped = PathGenerator.clipped_path(text_path, progress_texto / 100.0)
 
-        grosor_texto = max(2, 3 + (self._grosor / 100) * 4)
+        grosor_texto = max(2, 3 + (config["grosor"] / 100) * 4)
 
         # Capas 3D
         text_extrusion = 6 * scale if tilt > 3 else 2 * scale
@@ -498,19 +561,17 @@ class AlfajorCanvas(QWidget):
 
     # === Path rendering unificado ===
 
-    def _dibujar_path(self, painter, cx, cy, radio_max, progreso):
-        """Dibuja el patrón o imagen actual usando PathGenerator.
-        Para imágenes: usa cache — el pipeline pesado ya se ejecutó en set_imagen().
-        """
+    def _dibujar_path(self, painter, cx, cy, radio_max, progreso, config):
+        """Dibuja el patrón o imagen actual usando PathGenerator."""
         from backend.config import PrinterConfig as PC
         from backend.path_generator import PathGenerator
 
-        if self._imagen_path:
+        if config["imagen_path"]:
             # Usar cache: O(1), sin procesamiento CV2
-            path = self._imagen_path_cache.get(self._imagen_path, [])
+            path = self._imagen_path_cache.get(config["imagen_path"], [])
         else:
-            pg = PathGenerator(PC.ALFAJOR_RADIO_MM, self._grosor)
-            patron = self._patron if self._patron else "espiral"
+            pg = PathGenerator(PC.ALFAJOR_RADIO_MM, config["grosor"])
+            patron = config["patron"] if config["patron"] else "espiral"
             path = pg.generar(patron)
 
         if not path:
@@ -591,16 +652,16 @@ class AlfajorCanvas(QWidget):
         elif self._printing and self._progreso > 0:
             texto = f"EXTRUYENDO... {self._progreso}%"
             color = QColor(255, 171, 64, 200)
-        elif self._patron:
-            texto = f"Vista previa: {self._patron}"
+        elif self._configs[self._idx_seleccionado]["patron"]:
+            texto = f"Vista previa: {self._configs[self._idx_seleccionado]['patron']}"
             color = QColor(150, 150, 150, 150)
-        elif self._imagen_path:
+        elif self._configs[self._idx_seleccionado]["imagen_path"]:
             import os
-            nombre = os.path.basename(self._imagen_path)
+            nombre = os.path.basename(self._configs[self._idx_seleccionado]["imagen_path"])
             texto = f"Vista previa: {nombre}"
             color = QColor(150, 150, 150, 150)
-        elif self._texto:
-            texto = f"Vista previa: '{self._texto}'"
+        elif self._configs[self._idx_seleccionado]["texto"]:
+            texto = f"Vista previa: '{self._configs[self._idx_seleccionado]['texto']}'"
             color = QColor(150, 150, 150, 150)
         else:
             texto = "Listo para decorar"

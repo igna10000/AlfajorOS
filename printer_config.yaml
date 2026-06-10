@@ -5,15 +5,43 @@
 
 # === Alfajor ===
 alfajor:
-  diametro_mm: 67.0
+  diametro_mm: 70.0
   margen_mm: 3.0
   centro_x: 145.0
   centro_y: 150.0
+  centro_z: 11.0
+  matriz_centros:
+  - - 56.0
+    - 61.0
+    - 6.0
+  - - 125.0
+    - 62.0
+    - 7.0
+  - - 195.0
+    - 63.0
+    - 8.0
+  - - 56.0
+    - 133.0
+    - 7.0
+  - - 122.0
+    - 130.0
+    - 7.0
+  - - 191.0
+    - 132.0
+    - 8.0
+  - - 56.0
+    - 203.0
+    - 6.0
+  - - 125.0
+    - 196.0
+    - 7.0
+  - - 194.0
+    - 202.0
+    - 8.0
 
 # === Impresion ===
 impresion:
-  z_altura_mm: 0.4
-  z_offset_mm: 1.0
+  z_altura_mm: 1.0
   velocidad_impresion: 800
   velocidad_viaje: 3000
   velocidad_z: 600
@@ -24,7 +52,7 @@ extrusor:
   diametro_boquilla_mm: 1.5
   flujo_e_por_mm: 0.16
   retraccion_habilitada: false
-  retraccion_mm: 150.0
+  retraccion_mm: 10.0
   velocidad_retraccion: 20000
   desretraccion_mm: 54.0
   purga_inicial_mm: 120.0
@@ -38,8 +66,6 @@ viaje:
   pos_final_x: 10.0
   pos_final_y: 10.0
   pos_final_z: 40.0
-  # Retraccion forzada al finalizar (siempre se aplica, independiente de retraccion_habilitada)
-  # Evita que la crema gotee al levantar la boquilla. 0 = deshabilitado
   fin_retraccion_mm: 5.0
 
 # === Linea de crema ===
@@ -59,21 +85,13 @@ serial:
 
 # === Imagen ===
 imagen:
-  # Epsilon para simplificacion de contornos (% del perimetro)
-  # Menor = mas detallado, Mayor = mas simplificado
-  # Rango recomendado: 0.001 (muy detallado) a 0.02 (muy simplificado) 0.005
   epsilon_pct: 0.007
-  # Umbral para binarizacion (0 = auto/Otsu)
   umbral_binario: 0
-  # Area minima de contorno a incluir (en px2), filtra ruido
   area_minima_px: 2
-  # Margen interno respecto al borde del alfajor (mm)
   margen_imagen_mm: 2.0
 
 # === Cilindro 3D ===
 cilindro:
-  # Numero de capas a imprimir
   num_capas: 7
-  # Incremento de Z entre capas (mm)   2
   z_por_capa_mm: 1.5
 

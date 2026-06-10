@@ -156,14 +156,11 @@ class GCodeGenerator:
     """Genera G-Code a escala 1:1 para patrones de crema."""
 
     def __init__(self):
-        self.cx = PC.ALFAJOR_CENTRO_X
-        self.cy = PC.ALFAJOR_CENTRO_Y
         self.radio = PC.ALFAJOR_RADIO_MM
-        self.z_print = PC.Z_ALTURA_MM + PC.Z_OFFSET_MM
 
-    def generar_completo(self, patron="", texto="", grosor_pct=50, imagen_path="", manual_z0=False, fin_retraccion_mm=None, purga_inicial_mm=None):
+    def generar_completo(self, configs_serie=None, manual_z0=False, fin_retraccion_mm=None, purga_inicial_mm=None, modo_serie=False):
         """
-        Genera G-Code completo para un patron y/o texto.
+        Genera G-Code completo para un patron y/o texto basado en configs_serie.
         Retorna (gcode_str, metadata) donde metadata contiene:
           - drawing_start: linea donde empieza el dibujo
           - drawing_end: linea donde termina el dibujo
@@ -171,16 +168,23 @@ class GCodeGenerator:
         """
         g = GCodeBuilder()
 
-        # Configurar altura de impresion (sumando el offset de altura)
-        self.z_print = PC.Z_ALTURA_MM + PC.Z_OFFSET_MM
+        if not configs_serie:
+            configs_serie = [{"patron": "", "texto": "", "grosor": 50, "imagen_path": ""} for _ in range(9)]
+
+        # Recargar config desde YAML para garantizar centros actualizados
+        PC.reload()
+
+        # Configurar matriz de centros
+        if modo_serie:
+            centros = PC.ALFAJORES_CENTROS
+            manual_z0 = False # En modo serie SIEMPRE se requiere G28 para respetar los Z absolutos
+        else:
+            centros = [[PC.ALFAJOR_CENTRO_X, PC.ALFAJOR_CENTRO_Y, PC.ALFAJOR_CENTRO_Z]]
 
         # Header
         g.comment("=" * 50)
         g.comment("AlfajorOS - G-Code de Crema")
-        g.comment(f"Patron: {patron or 'ninguno'}")
-        g.comment(f"Texto: {texto or 'ninguno'}")
-        g.comment(f"Imagen: {os.path.basename(imagen_path) if imagen_path else 'ninguna'}")
-        g.comment(f"Centro: ({self.cx}, {self.cy})")
+        g.comment(f"Modo Serie: {modo_serie}")
         g.comment(f"Radio util: {self.radio:.1f} mm")
         g.comment("=" * 50)
         g.blank()
@@ -189,7 +193,7 @@ class GCodeGenerator:
         g.home(manual_z0)
         g.set_absolute()
         g.cold_extrusion()
-        g.raw("M211 S0") # Deshabilitar limites de software para permitir Z negativo (por offset de tapa)
+        g.raw("M211 S0") # Deshabilitar limites de software para permitir Z negativo
         g.reset_extruder()
         g.blank()
 
@@ -210,71 +214,80 @@ class GCodeGenerator:
             g.e_total += purga_inicial_mm
             g.raw(f"G1 E{g.e_total:.4f} F600")
             g.reset_extruder()
-            g.retracted = True  # Post-purga: considerar retraido para evitar E negativo
+            g.retracted = True  # Post-purga: considerar retraido
             g.blank()
 
-        # Posicionar en altura de impresion y centro del alfajor (un solo movimiento)
-        g.comment("Posicionando en centro del alfajor")
-        g.raw(f"G1 X{self.cx:.1f} Y{self.cy:.1f} Z{self.z_print:.2f} F{PC.VEL_VIAJE}")
-        g.current_x = self.cx
-        g.current_y = self.cy
-        g.current_z = self.z_print
-        g.retracted = False
-        g.blank()
-        # g.comment("Esperar 6 segundos antes de comenzar a extruir")
-        # g.dwell(6)
-        g.blank()
-
-        # === Marca inicio de dibujo ===
         drawing_start = g.line_count
 
-        # Patron — usa PathGenerator
-        if patron:
-            g.comment(f"=== Patron: {patron} ===")
-            pg = PathGenerator(self.radio, grosor_pct)
-            if "cilindro" in patron.lower():
-                # --- Logica especial para Cilindro 3D (Multi-capa) ---
-                num_capas = PC.CILINDRO_NUM_CAPAS
-                z_por_capa = PC.CILINDRO_Z_POR_CAPA_MM
-                
-                path_capa = pg.generar_cilindro_capa()
-                
-                for capa in range(num_capas):
-                    g.comment(f"--- Capa {capa + 1}/{num_capas} ---")
-                    
-                    # Calcular Z para esta capa
-                    z_actual = self.z_print + (capa * z_por_capa)
-                    
-                    # Mover a la altura de la capa actual
-                    if capa > 0:
-                         g.move_z(z_actual)
-                    
-                    # Imprimir el path de la capa
-                    self._path_to_gcode(g, path_capa)
+        # Iterar sobre los centros (1 o 9 alfajores)
+        for i, (cx, cy, cz) in enumerate(centros):
+            c = configs_serie[i]
+            patron = c["patron"]
+            texto = c["texto"]
+            imagen_path = c["imagen_path"]
+            grosor_pct = c["grosor"]
+
+            # Omitir si no hay diseño para este alfajor
+            if not patron and not texto and not imagen_path:
+                continue
+
+            self.cx = cx
+            self.cy = cy
+            self.z_print = cz + PC.Z_ALTURA_MM
+            
+            g.comment(f"--- Iniciando Alfajor {i+1} en X:{cx:.1f} Y:{cy:.1f} Z:{self.z_print:.2f} ---")
+            
+            # Viaje al centro del alfajor con Z-Hop
+            g.move_z(self.z_print + PC.Z_HOP_MM)
+            g.raw(f"G0 X{self.cx:.1f} Y{self.cy:.1f} F{PC.VEL_VIAJE}")
+            g.move_z(self.z_print)
+            g.current_x = self.cx
+            g.current_y = self.cy
+            g.current_z = self.z_print
+            g.blank()
+            
+            # Patron
+            if patron:
+                g.comment(f"=== Patron: {patron} ===")
+                pg = PathGenerator(self.radio, grosor_pct)
+                if "cilindro" in patron.lower():
+                    num_capas = PC.CILINDRO_NUM_CAPAS
+                    z_por_capa = PC.CILINDRO_Z_POR_CAPA_MM
+                    path_capa = pg.generar_cilindro_capa()
+                    for capa in range(num_capas):
+                        g.comment(f"--- Capa {capa + 1}/{num_capas} ---")
+                        z_actual = self.z_print + (capa * z_por_capa)
+                        if capa > 0:
+                             g.move_z(z_actual)
+                        self._path_to_gcode(g, path_capa)
+                        g.blank()
+                else:
+                    path = pg.generar(patron)
+                    self._path_to_gcode(g, path)
                     g.blank()
-            else:
-                # --- Patrones normales (Una capa) ---
-                path = pg.generar(patron)
-                self._path_to_gcode(g, path)
+
+            # Texto
+            if texto:
+                g.comment(f"=== Texto: {texto} ===")
+                pg_txt = PathGenerator(self.radio, grosor_pct)
+                path_texto = pg_txt.generar_texto(texto)
+                self._path_to_gcode(g, path_texto)
                 g.blank()
 
-        # Texto — usa PathGenerator
-        if texto:
-            g.comment(f"=== Texto: {texto} ===")
-            pg_txt = PathGenerator(self.radio, grosor_pct)
-            path_texto = pg_txt.generar_texto(texto)
-            self._path_to_gcode(g, path_texto)
-            g.blank()
-
-        # Imagen personalizada — usa PathGenerator + ImageProcessor
-        if imagen_path:
-            g.comment(f"=== Imagen: {os.path.basename(imagen_path)} ===")
-            pg_img = PathGenerator(self.radio, grosor_pct)
-            path_img = pg_img.generar_imagen(imagen_path)
-            self._path_to_gcode(g, path_img)
-            g.blank()
-
-        # === Marca fin de dibujo ===
+            # Imagen personalizada
+            if imagen_path:
+                g.comment(f"=== Imagen: {os.path.basename(imagen_path)} ===")
+                pg_img = PathGenerator(self.radio, grosor_pct)
+                path_img = pg_img.generar_imagen(imagen_path)
+                self._path_to_gcode(g, path_img)
+                g.blank()
+                
+            # Al terminar el alfajor, si hay más, forzamos retracción para el viaje
+            if i < len(centros) - 1:
+                g.comment(f"Retracción para viaje al siguiente alfajor")
+                if not g.retracted:
+                    g._retract()
+            
         drawing_end = g.line_count
 
         # Footer

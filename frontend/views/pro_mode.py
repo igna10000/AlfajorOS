@@ -153,12 +153,14 @@ class ProModeWindow(QMainWindow):
                               0.0, 300.0, 1.0, " mm")
         self._add_double_spin(grid, 3, "Centro Y (mm):", "alfajor_centro_y",
                               0.0, 300.0, 1.0, " mm")
+        self._add_double_spin(grid, 4, "Altura Base Z (mm):", "alfajor_centro_z",
+                              0.0, 100.0, 0.5, " mm")
 
         # Info calculada
         self.lbl_radio = QLabel("")
         self.lbl_radio.setStyleSheet("color: #4DB6AC; font-weight: bold;")
-        grid.addWidget(QLabel("Radio útil:"), 4, 0)
-        grid.addWidget(self.lbl_radio, 4, 1)
+        grid.addWidget(QLabel("Radio útil:"), 5, 0)
+        grid.addWidget(self.lbl_radio, 5, 1)
 
         # Conectar para actualizar radio en tiempo real
         self._spinboxes["alfajor_diametro"].valueChanged.connect(self._actualizar_radio_label)
@@ -177,17 +179,15 @@ class ProModeWindow(QMainWindow):
         grp.setFont(QFont("Purisa", 10, QFont.Bold))
         grid = QGridLayout(grp)
 
-        self._add_double_spin(grid, 0, "Altura Z (mm):", "z_altura",
+        self._add_double_spin(grid, 0, "Altura de Crema Z (mm):", "z_altura",
                               0.0, 20.0, 0.1, " mm")
-        self._add_double_spin(grid, 1, "Offset Z (mm):", "z_offset",
-                              -50.0, 50.0, 0.5, " mm")
-        self._add_int_spin(grid, 2, "Vel. impresión (mm/min):", "vel_impresion",
+        self._add_int_spin(grid, 1, "Vel. impresión (mm/min):", "vel_impresion",
                            100, 5000, 50, " mm/min")
-        self._add_int_spin(grid, 3, "Vel. viaje (mm/min):", "vel_viaje",
+        self._add_int_spin(grid, 2, "Vel. viaje (mm/min):", "vel_viaje",
                            500, 10000, 100, " mm/min")
-        self._add_int_spin(grid, 4, "Vel. Z (mm/min):", "vel_z",
+        self._add_int_spin(grid, 3, "Vel. Z (mm/min):", "vel_z",
                            100, 3000, 50, " mm/min")
-        self._add_int_spin(grid, 5, "Vel. primera capa (mm/min):", "vel_primera_capa",
+        self._add_int_spin(grid, 4, "Vel. primera capa (mm/min):", "vel_primera_capa",
                            100, 5000, 50, " mm/min")
 
         layout.addWidget(grp)
@@ -387,8 +387,8 @@ class ProModeWindow(QMainWindow):
             "alfajor_margen": PC.ALFAJOR_MARGEN_MM,
             "alfajor_centro_x": PC.ALFAJOR_CENTRO_X,
             "alfajor_centro_y": PC.ALFAJOR_CENTRO_Y,
+            "alfajor_centro_z": PC.ALFAJOR_CENTRO_Z,
             "z_altura": PC.Z_ALTURA_MM,
-            "z_offset": PC.Z_OFFSET_MM,
             "vel_impresion": PC.VEL_IMPRESION,
             "vel_viaje": PC.VEL_VIAJE,
             "vel_z": PC.VEL_Z,
@@ -424,9 +424,9 @@ class ProModeWindow(QMainWindow):
         PC.ALFAJOR_MARGEN_MM = self._spinboxes["alfajor_margen"].value()
         PC.ALFAJOR_CENTRO_X = self._spinboxes["alfajor_centro_x"].value()
         PC.ALFAJOR_CENTRO_Y = self._spinboxes["alfajor_centro_y"].value()
+        PC.ALFAJOR_CENTRO_Z = self._spinboxes["alfajor_centro_z"].value()
         PC.ALFAJOR_RADIO_MM = (PC.ALFAJOR_DIAMETRO_MM / 2) - PC.ALFAJOR_MARGEN_MM
         PC.Z_ALTURA_MM = self._spinboxes["z_altura"].value()
-        PC.Z_OFFSET_MM = self._spinboxes["z_offset"].value()
         PC.VEL_IMPRESION = self._spinboxes["vel_impresion"].value()
         PC.VEL_VIAJE = self._spinboxes["vel_viaje"].value()
         PC.VEL_Z = self._spinboxes["vel_z"].value()
@@ -532,7 +532,7 @@ class ProModeWindow(QMainWindow):
                 border-radius: 6px;
                 padding: 8px 15px;
                 color: #e0e0e0;
-                min-height: 30px;
+                min-height: 45px;
             }
             QPushButton:hover {
                 background-color: #4a4a4a;
@@ -547,7 +547,7 @@ class ProModeWindow(QMainWindow):
                 border-radius: 6px;
                 padding: 8px;
                 color: #e0e0e0;
-                min-height: 30px;
+                min-height: 45px;
                 font-size: 13px;
             }
             QSpinBox:focus, QDoubleSpinBox:focus {

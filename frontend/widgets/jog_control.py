@@ -124,6 +124,7 @@ class JogControlWidget(QWidget):
     
     z0_set = Signal()
     homed_all = Signal()
+    home_saved = Signal(float, float, float) # X, Y, Z
 
     def __init__(self, printer, parent=None):
         super().__init__(parent)
@@ -257,11 +258,11 @@ class JogControlWidget(QWidget):
 
         main_layout.addStretch()
 
-        # Botón Set Z0
-        self.btn_set_z0 = QPushButton("📍\nSETEAR CIMA\n(Z=0)")
+        # Botón Set Z0 / Guardar Home
+        self.btn_set_z0 = QPushButton("📍\nGUARDAR\nHOME")
         self.btn_set_z0.setFixedHeight(70)
         self.btn_set_z0.setStyleSheet(BTN_Z0_STYLE)
-        self.btn_set_z0.clicked.connect(self._set_z0)
+        self.btn_set_z0.clicked.connect(self._save_home)
         main_layout.addWidget(self.btn_set_z0)
 
     def _get_step(self):
@@ -307,52 +308,73 @@ class JogControlWidget(QWidget):
             self.printer.send_command(cmd)
 
     def _home_all(self):
-        """Secuencia: Home -> Retracción -> Ir al Centro."""
+        """Autohome básico (G28) y viaje al centro (por defecto en modo individual)."""
         if not self.printer.is_connected:
             QMessageBox.warning(self, "Sin conexión", "La impresora no está conectada.")
             return
             
         from backend.config import PrinterConfig as PC
         
-        # Mostrar el diálogo táctil en lugar de QInputDialog
-        dialog = RetractionDialog(self, default_val=PC.RETRACCION_MM)
-        if dialog.exec():
-            distancia = dialog.get_value()
-            lineas_gcode = ["G28"]
-            
-            if distancia > 0:
-                lineas_gcode.append("M302 P1 ; Permitir extrusión en frío")
-                lineas_gcode.append("G91")
-                
-                # Segmentar en bloques de 10mm
-                restante = distancia
-                while restante > 0:
-                    paso = min(10.0, restante)
-                    lineas_gcode.append(f"G1 E-{paso:.4f} F{PC.VEL_RETRACCION}")
-                    restante -= paso
-                    
-                lineas_gcode.append("G90")
-                
-            lineas_gcode.append(f"G0 X{PC.ALFAJOR_CENTRO_X:.1f} Y{PC.ALFAJOR_CENTRO_Y:.1f} F3000")
-            
-            self.printer.send_gcode("\n".join(lineas_gcode))
-            self.homed_all.emit()
+        lineas_gcode = [
+            "M302 P1",  # Permitir movimiento en frío si fuese necesario
+            "G28",
+            f"G0 Z{PC.ALFAJOR_CENTRO_Z + PC.Z_HOP_MM:.2f} F{PC.VEL_Z}",
+            f"G0 X{PC.ALFAJOR_CENTRO_X:.1f} Y{PC.ALFAJOR_CENTRO_Y:.1f} F3000",
+            f"G0 Z{PC.ALFAJOR_CENTRO_Z:.2f} F{PC.VEL_Z}"
+        ]
+        self.printer.send_gcode("\n".join(lineas_gcode))
+        self.homed_all.emit()
 
-    def _set_z0(self):
-        """Establece la posición Z actual como Z=0."""
+    def _save_home(self):
+        """Obtiene la posición actual y emite señal con coordenadas absolutas M114."""
         if not self.printer.is_connected:
             QMessageBox.warning(self, "Sin conexión", "La impresora no está conectada.")
             return
             
         respuesta = QMessageBox.question(
-            self, "Setear Cima", 
-            "¿Establecer la altura actual como la cima del material (Z=0)?\nLa impresora considerará este punto como el inicio del eje Z.",
+            self, "Guardar Home", 
+            "¿Establecer la posición actual como el Home para la impresión?\nSe registrará X, Y, y la altura base (Z).",
             QMessageBox.Yes | QMessageBox.No
         )
         if respuesta == QMessageBox.Yes:
-            self.printer.send_command("G92 Z0")
-            self.z0_set.emit()
-            QMessageBox.information(self, "Cima Establecida", "El punto actual se ha fijado como Z=0.")
+            import re
+            import time
+            
+            # Vaciar el buffer serial de respuestas residuales (oks de movimientos anteriores)
+            if self.printer._serial and self.printer._serial.is_open:
+                try:
+                    while self.printer._serial.in_waiting:
+                        self.printer._serial.readline()
+                except Exception:
+                    pass
+            
+            # Pequeña pausa para que Marlin termine cualquier movimiento en curso
+            time.sleep(0.3)
+            
+            match = None
+            resp_acumulada = ""
+            
+            # Intentar hasta 5 veces
+            for attempt in range(5):
+                resp = self.printer.send_command("M114")
+                if resp:
+                    resp_acumulada += resp
+                    # Buscar coordenadas en TODA la respuesta acumulada
+                    # M114 responde: "X:56.00 Y:61.00 Z:4.00 E:0.00 Count X:..."
+                    match = re.search(r"X:\s*([-\d\.]+)\s*Y:\s*([-\d\.]+)\s*Z:\s*([-\d\.]+)", resp_acumulada, re.IGNORECASE)
+                    if match:
+                        break
+                time.sleep(0.2)
+                
+            if match:
+                x = float(match.group(1))
+                y = float(match.group(2))
+                z = float(match.group(3))
+                self.home_saved.emit(x, y, z)
+                self.z0_set.emit()
+                QMessageBox.information(self, "Home Guardado", f"Centro establecido en:\nX: {x} mm\nY: {y} mm\nZ: {z} mm")
+            else:
+                QMessageBox.warning(self, "Error de M114", f"No se pudo interpretar la respuesta de la impresora:\n{resp_acumulada or '(sin respuesta)'}")
 
     def get_animable_buttons(self):
         """Retorna la lista de botones a los que se les puede aplicar animación de pulso."""
