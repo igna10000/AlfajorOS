@@ -248,12 +248,28 @@ class PrinterConnection(QObject):
                 if not cmd or cmd.startswith(";"):
                     return "skip"
 
+                # Interceptar comando M280 para controlar el servo localmente
+                if cmd.startswith("M280 P0"):
+                    try:
+                        parts = cmd.split("S")
+                        if len(parts) > 1:
+                            angle = int(parts[1].split()[0])
+                            print(f"[AlfajorOS SERVO] Interceptando M280: moviendo a {angle} grados.")
+                            from backend.servo_controller import set_servo_angle
+                            set_servo_angle(angle)
+                    except Exception as e:
+                        print(f"Error parseando M280: {e}")
+                    return "ok\n" # Falsificar respuesta para Marlin
+
                 self._serial.write((cmd + "\n").encode("utf-8"))
                 self._serial.flush()
 
                 # Esperar respuesta (ok / error)
                 response = ""
-                deadline = time.time() + 10  # Timeout 10s para comandos largos
+                # M400, G28, G29 necesitan mucho más tiempo porque esperan a movimientos físicos
+                timeout_s = 3600 if any(cmd.startswith(x) for x in ["M400", "G28", "G29"]) else 15
+                deadline = time.time() + timeout_s
+                
                 while time.time() < deadline:
                     if self._serial.in_waiting:
                         line = self._serial.readline().decode("utf-8", errors="ignore").strip()
@@ -265,12 +281,16 @@ class PrinterConnection(QObject):
                         elif "error" in line.lower():
                             self.error_occurred.emit(f"Marlin error: {line}")
                             return response
+                        elif "busy" in line.lower():
+                            # Resetear el timeout si Marlin reporta estar ocupado
+                            deadline = time.time() + timeout_s
                     else:
                         time.sleep(0.01)
 
                 # Timeout
                 self.error_occurred.emit(f"Timeout esperando respuesta a: {cmd}")
-                return response if response else None
+                # IMPORTANTE: Si hay timeout, devolver None para abortar y no seguir desfasando
+                return None
 
             except (serial.SerialException, OSError) as e:
                 self.error_occurred.emit(f"Error serial: {str(e)}")
@@ -299,13 +319,21 @@ class PrinterConnection(QObject):
 
     def _send_gcode_thread(self, gcode_text):
         """Hilo que envía G-Code línea por línea."""
-        lines = [l.strip() for l in gcode_text.split("\n")
-                 if l.strip() and not l.strip().startswith(";")]
-        total = len(lines)
+        # Mantener los comentarios para loggearlos en consola
+        lines = [l.strip() for l in gcode_text.split("\n") if l.strip()]
+        
+        # El total de líneas solo cuenta los comandos reales
+        valid_lines = [l for l in lines if not l.startswith(";")]
+        total = len(valid_lines)
+        cmd_count = 0
 
         for i, line in enumerate(lines):
             if self._stop_send:
                 break
+
+            if line.startswith(";"):
+                print(f"[AlfajorOS INFO] Ejecutando: {line}")
+                continue
 
             result = self.send_command(line)
             if result is None:
@@ -313,7 +341,8 @@ class PrinterConnection(QObject):
                 self.error_occurred.emit("Conexión perdida durante envío")
                 break
 
-            self.gcode_progress.emit(i + 1, total)
+            cmd_count += 1
+            self.gcode_progress.emit(cmd_count, total)
 
         if not self._stop_send:
             self._set_state(PrinterState.CONNECTED)

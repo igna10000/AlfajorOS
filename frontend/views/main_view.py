@@ -256,6 +256,7 @@ class MainView(QMainWindow):
         self.jog_control = JogControlWidget(self.printer)
         self.jog_control.z0_set.connect(self._on_z0_set)
         self.jog_control.homed_all.connect(self._on_homed_all)
+        self.jog_control.home_saved.connect(self._on_home_saved)
         self.jog_control.hide()
         r_layout.addWidget(self.jog_control)
         r_layout.addStretch()
@@ -317,9 +318,14 @@ class MainView(QMainWindow):
 
     def _on_homed_all(self):
         self._manual_z0_set = False
+        self._manual_home = None
         self._gcode_meta = None
         self.pushButton_4.setEnabled(True)
         self.pushButton_5.setEnabled(False)
+
+    def _on_home_saved(self, x, y, z):
+        self._manual_home = (x, y, z)
+        self._manual_z0_set = True
 
     def _ocultar_botones_ui(self):
         """Elimina botones de Texto, Figura y PRO del .ui (reemplazados por columna)."""
@@ -531,6 +537,7 @@ class MainView(QMainWindow):
         gcode, meta = gen.generar_completo(
             configs_serie=self.canvas._configs,
             manual_z0=self._manual_z0_set,
+            manual_home=getattr(self, '_manual_home', None),
             fin_retraccion_mm=fin_retraccion,
             purga_inicial_mm=purga_inicial,
             modo_serie=self.modo_serie

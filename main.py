@@ -37,10 +37,14 @@ from PySide6.QtGui import QCursor
 
 from frontend.app import AppController
 from frontend.styles import get_global_stylesheet
+from backend.servo_controller import set_servo_angle
 
 
 def main():
     """Punto de entrada principal de AlfajorOS."""
+    # Inicializar el servo en 130 grados cuando no está dibujando (cerrado)
+    set_servo_angle(130)
+
     app = QApplication(sys.argv)
     app.setApplicationName("AlfajorOS — Extrusora de Crema")
     app.setOrganizationName("Proyecto de Grado")

@@ -35,6 +35,12 @@ class GCodeBuilder:
     def raw(self, cmd):
         self.lines.append(cmd)
 
+    def set_servo(self, angle):
+        """Genera el comando custom para mover el servo, sincronizado con M400."""
+        self.comment(f"Control de Servo a {angle} grados")
+        self.raw("M400") # Vaciar buffer de Marlin para sincronizar con Python
+        self.raw(f"M280 P0 S{angle}")
+
     def home(self, manual_z0=False):
         if manual_z0:
             self.comment("Homing omitido (preservando Z0 manual)")
@@ -158,7 +164,7 @@ class GCodeGenerator:
     def __init__(self):
         self.radio = PC.ALFAJOR_RADIO_MM
 
-    def generar_completo(self, configs_serie=None, manual_z0=False, fin_retraccion_mm=None, purga_inicial_mm=None, modo_serie=False):
+    def generar_completo(self, configs_serie=None, manual_z0=False, manual_home=None, fin_retraccion_mm=None, purga_inicial_mm=None, modo_serie=False):
         """
         Genera G-Code completo para un patron y/o texto basado en configs_serie.
         Retorna (gcode_str, metadata) donde metadata contiene:
@@ -180,7 +186,10 @@ class GCodeGenerator:
             centros = PC.ALFAJORES_CENTROS
             manual_z0 = False # En modo serie SIEMPRE se requiere G28 para respetar los Z absolutos
         else:
-            centros = [[PC.ALFAJOR_CENTRO_X, PC.ALFAJOR_CENTRO_Y, PC.ALFAJOR_CENTRO_Z]]
+            if manual_z0 and manual_home is not None:
+                centros = [list(manual_home)]
+            else:
+                centros = [[PC.ALFAJOR_CENTRO_X, PC.ALFAJOR_CENTRO_Y, PC.ALFAJOR_CENTRO_Z]]
 
         # Header
         g.comment("=" * 50)
@@ -200,7 +209,10 @@ class GCodeGenerator:
 
         # Mover a posicion de purga
         g.comment("Posicionando para purga")
-        purga_z = 5.0 if manual_z0 else PC.PURGA_POS_Z
+        if manual_z0:
+            purga_z = centros[0][2] + 5.0
+        else:
+            purga_z = PC.PURGA_POS_Z
         g.move_z(purga_z + PC.Z_HOP_MM)
         g.raw(f"G0 X{PC.PURGA_POS_X:.1f} Y{PC.PURGA_POS_Y:.1f} F{PC.VEL_VIAJE}")
         g.move_z(purga_z)
@@ -212,8 +224,10 @@ class GCodeGenerator:
 
         if purga_inicial_mm > 0:
             g.comment("Purga inicial")
+            g.set_servo(20)
             g.e_total += purga_inicial_mm
             g.raw(f"G1 E{g.e_total:.4f} F600")
+            g.set_servo(130)
             g.reset_extruder()
             g.retracted = True  # Post-purga: considerar retraido
             g.blank()
@@ -246,6 +260,9 @@ class GCodeGenerator:
             g.current_x = self.cx
             g.current_y = self.cy
             g.current_z = self.z_print
+            
+            # Abrir servo a 20 grados durante toda la galleta
+            g.set_servo(20)
             g.blank()
             
             # Patron
@@ -284,6 +301,10 @@ class GCodeGenerator:
                 self._path_to_gcode(g, path_img)
                 g.blank()
                 
+            # Cerrar servo a 130 grados al finalizar la galleta
+            g.set_servo(130)
+            g.blank()
+                
             # Al terminar el alfajor, si hay más, forzamos retracción para el viaje
             if i < len(centros) - 1:
                 g.comment(f"Retracción para viaje al siguiente alfajor")
@@ -295,6 +316,7 @@ class GCodeGenerator:
         # Footer
         g.comment("=== Fin ===")
         g.park(fin_retraccion_mm)
+        g.set_servo(130)
         g.blank()
 
         metadata = {
@@ -321,6 +343,7 @@ class GCodeGenerator:
             x0 = self.cx - segment[0][0]
             y0 = self.cy + segment[0][1]
             g.travel(x0, y0)
+            
             # Extrude por el resto del segmento
             for px, py in segment[1:]:
                 g.extrude_to(self.cx - px, self.cy + py)
