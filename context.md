@@ -59,6 +59,8 @@ AlfajorOS/
 - **Prevención de Colisiones Z-Hop (Safe Z)**: Algoritmo de viaje (travel) dinámico que calcula la altura Z segura `max(current_z, target_z)` en todo momento, evitando estrellar la boquilla contra construcciones 3D previas al viajar o estacionar.
 - **Robustez Serial (M114)**: Sincronización estricta del buffer serial y vaciado antes de leer comandos síncronos de la impresora para evitar desfaces en las posiciones devueltas.
 - **Recarga de Configuración en Caliente (`PC.reload()`)**: Sincronización en tiempo real de `printer_config.yaml` antes de iniciar el trabajo, posibilitando ajustes físicos sin reiniciar AlfajorOS.
+- **Control Físico de Tapa (Servo SG90)**: Integración de la librería `gpiozero` (`lgpio`) en `backend/servo_controller.py` mediante el GPIO 19 de la Raspberry Pi. El servo opera a 20° (abierto) durante el tiempo total de extrusión de la galleta y 130° (cerrado) en estados de viaje o reposo.
+- **Sincronización Física Estricta (M400 y Serial Timeouts)**: Solución al desfase entre la interfaz visual de Python y los motores físicos. El sistema intercepta el comando `M280` localmente e inyecta `M400` para obligar a Python a esperar la finalización de los movimientos de Marlin. Se rediseñó `printer.py` para utilizar *timeouts asíncronos adaptativos* (3600s para M400/G28) que se reinician de manera segura al recibir señales `echo: busy: processing` desde la placa base.
 
 ---
 *NOTA AL AGENTE: Debes modificar y actualizar este archivo cada vez que el usuario agregue una nueva característica sustancial o modifique la arquitectura, para que este contexto se mantenga "vivo" y preciso.*
