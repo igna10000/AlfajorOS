@@ -102,10 +102,15 @@ class PrinterConfig:
     CILINDRO_Z_POR_CAPA_MM = _get(_cfg, "cilindro", "z_por_capa_mm", default=2.0)
 
     # === Cilindro Domo 3D ===
-    DOMO_NUM_CAPAS = _get(_cfg, "cilindro_domo", "num_capas", default=7)
+    DOMO_NUM_CAPAS = _get(_cfg, "cilindro_domo", "num_capas", default=9)
     DOMO_Z_POR_CAPA_MM = _get(_cfg, "cilindro_domo", "z_por_capa_mm", default=1.5)
-    DOMO_CAPAS_BASE = _get(_cfg, "cilindro_domo", "capas_base", default=4)
-    DOMO_REDUCCION_RADIO = _get(_cfg, "cilindro_domo", "reduccion_radio", default=0.85)
+    DOMO_CAPAS_BASE = _get(_cfg, "cilindro_domo", "capas_base", default=3)
+    DOMO_CONVEXIDAD = _get(_cfg, "cilindro_domo", "convexidad", default=1.5)
+    DOMO_Z_ACELERACION = _get(_cfg, "cilindro_domo", "z_aceleracion_domo", default=0.5)
+    DOMO_DEMO_ARCOS = _get(_cfg, "cilindro_domo", "demo_arcos", default=True)
+    DOMO_DEMO_ARCOS_NUM = _get(_cfg, "cilindro_domo", "demo_arcos_num", default=4)
+    DOMO_DEMO_ARCOS_RADIO = _get(_cfg, "cilindro_domo", "demo_arcos_radio", default=5.0)
+    DOMO_DEMO_ARCOS_Z_MM = _get(_cfg, "cilindro_domo", "demo_arcos_z_mm", default=3.0)
 
     # === Conos Estrella 3D ===
     CONOS_NUM_CAPAS = _get(_cfg, "conos_estrella", "num_capas", default=8)
@@ -183,10 +188,15 @@ class PrinterConfig:
         cls.CILINDRO_NUM_CAPAS = _get(_cfg, "cilindro", "num_capas", default=5)
         cls.CILINDRO_Z_POR_CAPA_MM = _get(_cfg, "cilindro", "z_por_capa_mm", default=2.0)
         # === Cilindro Domo 3D ===
-        cls.DOMO_NUM_CAPAS = _get(_cfg, "cilindro_domo", "num_capas", default=7)
+        cls.DOMO_NUM_CAPAS = _get(_cfg, "cilindro_domo", "num_capas", default=9)
         cls.DOMO_Z_POR_CAPA_MM = _get(_cfg, "cilindro_domo", "z_por_capa_mm", default=1.5)
-        cls.DOMO_CAPAS_BASE = _get(_cfg, "cilindro_domo", "capas_base", default=4)
-        cls.DOMO_REDUCCION_RADIO = _get(_cfg, "cilindro_domo", "reduccion_radio", default=0.85)
+        cls.DOMO_CAPAS_BASE = _get(_cfg, "cilindro_domo", "capas_base", default=3)
+        cls.DOMO_CONVEXIDAD = _get(_cfg, "cilindro_domo", "convexidad", default=1.5)
+        cls.DOMO_Z_ACELERACION = _get(_cfg, "cilindro_domo", "z_aceleracion_domo", default=0.5)
+        cls.DOMO_DEMO_ARCOS = _get(_cfg, "cilindro_domo", "demo_arcos", default=True)
+        cls.DOMO_DEMO_ARCOS_NUM = _get(_cfg, "cilindro_domo", "demo_arcos_num", default=4)
+        cls.DOMO_DEMO_ARCOS_RADIO = _get(_cfg, "cilindro_domo", "demo_arcos_radio", default=5.0)
+        cls.DOMO_DEMO_ARCOS_Z_MM = _get(_cfg, "cilindro_domo", "demo_arcos_z_mm", default=3.0)
         # === Conos Estrella 3D ===
         cls.CONOS_NUM_CAPAS = _get(_cfg, "conos_estrella", "num_capas", default=8)
         cls.CONOS_Z_POR_CAPA_MM = _get(_cfg, "conos_estrella", "z_por_capa_mm", default=1.5)
@@ -265,7 +275,12 @@ class PrinterConfig:
                 'num_capas': int(cls.DOMO_NUM_CAPAS),
                 'z_por_capa_mm': float(cls.DOMO_Z_POR_CAPA_MM),
                 'capas_base': int(cls.DOMO_CAPAS_BASE),
-                'reduccion_radio': float(cls.DOMO_REDUCCION_RADIO),
+                'convexidad': float(cls.DOMO_CONVEXIDAD),
+                'z_aceleracion_domo': float(cls.DOMO_Z_ACELERACION),
+                'demo_arcos': bool(cls.DOMO_DEMO_ARCOS),
+                'demo_arcos_num': int(cls.DOMO_DEMO_ARCOS_NUM),
+                'demo_arcos_radio': float(cls.DOMO_DEMO_ARCOS_RADIO),
+                'demo_arcos_z_mm': float(cls.DOMO_DEMO_ARCOS_Z_MM),
             },
             'conos_estrella': {
                 'num_capas': int(cls.CONOS_NUM_CAPAS),

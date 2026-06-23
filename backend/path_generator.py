@@ -175,22 +175,25 @@ class PathGenerator:
     def generar_domo_capa(self, capa, total_capas):
         """Genera el path de UNA capa del cilindro domo.
         Las capas < capas_base usan radio completo (cilindro recto).
-        Las capas superiores siguen un perfil de media esfera (coseno)
-        para producir un cierre curvo y redondeado tipo iglú.
-        Perfil: r = R × cos(t × π/2) donde t va de 0.0 a 1.0
+        Las capas superiores siguen un perfil convexo controlado por
+        el parámetro 'convexidad':
+          radio = R × cos(t^convexidad × π/2)
+        convexidad > 1 mantiene el radio ancho más tiempo (domo más pronunciado).
+        convexidad = 1 produce un hemisferio puro.
         """
         capas_base = PC.DOMO_CAPAS_BASE
+        convexidad = PC.DOMO_CONVEXIDAD
         if capa < capas_base:
             # Capas cilíndricas: radio completo
             radio_capa = self.radio
         else:
-            # Capas de domo: perfil de media esfera (coseno)
+            # Capas de domo: perfil convexo con parámetro de convexidad
             capas_domo = total_capas - capas_base
             idx_domo = capa - capas_base  # 0, 1, 2, ...
             # t progresa de (1/capas_domo) a 1.0
             t = (idx_domo + 1) / capas_domo
-            # Perfil hemisférico: cos(0)=1 (radio completo) → cos(π/2)=0 (cerrado)
-            radio_capa = self.radio * math.cos(t * math.pi / 2)
+            # Perfil convexo: t^convexidad comprime la curva, manteniendo radio ancho más tiempo
+            radio_capa = self.radio * math.cos((t ** convexidad) * math.pi / 2)
             # Mínimo ~1mm para que la boquilla pueda extruir
             radio_capa = max(radio_capa, 1.0)
         return self._p_circulo_simple(radio_capa)
@@ -241,6 +244,44 @@ class PathGenerator:
         escalon_actual = min(capa // capas_por_escalon, num_escalones - 1)
         radio_capa = self.radio * (reduccion ** escalon_actual)
         return self._p_circulo_simple(radio_capa)
+
+    def generar_arcos_3d_demo(self):
+        """Genera el path para la demostración de arcos 3D al finalizar el domo.
+        Consiste en arcos que cruzan el alfajor de borde a borde pasando por el centro.
+        Para cada arco, la boquilla viaja por el aire desde un borde al opuesto,
+        subiendo en Z formando una parábola y regresando a la altura base en el otro extremo.
+        Retorna segmentos con tuplas 3D: (x, y, z_offset).
+        """
+        num_arcos = PC.DOMO_DEMO_ARCOS_NUM
+        radio = PC.DOMO_DEMO_ARCOS_RADIO
+        z_max = PC.DOMO_DEMO_ARCOS_Z_MM
+        
+        segments = []
+        puntos_por_arco = 36
+        
+        # Queremos 'num_arcos' diametros. 
+        # Si num_arcos=4, dibujara lineas a 0°, 45°, 90°, 135°
+        for i in range(num_arcos):
+            # Calculamos el angulo para este diametro (180 grados cubren todas las direcciones cruzadas)
+            angulo_arco = math.radians(i * (180.0 / num_arcos))
+            
+            segment = []
+            # t va de -1.0 a +1.0 para ir de un borde (-R) al otro borde (+R) pasando por el centro
+            for p in range(puntos_por_arco + 1):
+                t = -1.0 + (2.0 * p / puntos_por_arco)
+                
+                # XY: linea recta de borde a borde a traves del centro
+                x = (t * radio) * math.cos(angulo_arco)
+                y = (t * radio) * math.sin(angulo_arco)
+                
+                # Z: parabola que es 0 en los bordes (t=-1 y t=1) y z_max en el centro (t=0)
+                z_offset = z_max * (1.0 - t**2)
+                
+                segment.append((x, y, z_offset))
+                
+            segments.append(segment)
+            
+        return segments
 
     # ========================================================
     # Patrones

@@ -73,7 +73,7 @@ class GCodeBuilder:
         """Pausa la ejecucion por n segundos."""
         self.raw(f"G4 P{int(seconds * 1000)}")
 
-    def travel(self, x, y):
+    def travel(self, x, y, z=None):
         """Movimiento sin extruir — continuo, sin detener XY.
         Si retraccion habilitada: retrae E durante el movimiento XY.
         Si deshabilitada: solo mueve XY sin tocar E.
@@ -82,12 +82,15 @@ class GCodeBuilder:
         if PC.RETRACCION_HABILITADA and not self.retracted:
             self.e_total -= PC.RETRACCION_MM
             self.retracted = True
-        # Mover XY (un solo comando, sin paradas)
-        self.raw(f"G1 X{x:.3f} Y{y:.3f} E{self.e_total:.4f} F{PC.VEL_VIAJE}")
+        # Mover XY y opcionalmente Z (un solo comando, sin paradas)
+        z_str = f" Z{z:.3f}" if z is not None else ""
+        self.raw(f"G1 X{x:.3f} Y{y:.3f}{z_str} E{self.e_total:.4f} F{PC.VEL_VIAJE}")
         self.current_x = x
         self.current_y = y
+        if z is not None:
+            self.current_z = z
 
-    def extrude_to(self, x, y, speed=None):
+    def extrude_to(self, x, y, z=None, speed=None):
         """Movimiento con extrusion."""
         if speed is None:
             speed = PC.VEL_IMPRESION
@@ -97,13 +100,17 @@ class GCodeBuilder:
             self.retracted = False
         dx = x - self.current_x
         dy = y - self.current_y
-        dist = math.sqrt(dx * dx + dy * dy)
+        dz = (z - self.current_z) if z is not None else 0
+        dist = math.sqrt(dx * dx + dy * dy + dz * dz)
         if dist < 0.01:
             return
         self.e_total += dist * PC.FLUJO_E_POR_MM
-        self.raw(f"G1 X{x:.3f} Y{y:.3f} E{self.e_total:.4f} F{speed}")
+        z_str = f" Z{z:.3f}" if z is not None else ""
+        self.raw(f"G1 X{x:.3f} Y{y:.3f}{z_str} E{self.e_total:.4f} F{speed}")
         self.current_x = x
         self.current_y = y
+        if z is not None:
+            self.current_z = z
 
     def _retract(self):
         self.e_total -= PC.RETRACCION_MM
@@ -271,16 +278,35 @@ class GCodeGenerator:
                 pg = PathGenerator(self.radio, grosor_pct)
                 p_lower = patron.lower()
                 if "domo" in p_lower:
-                    # Cilindro Domo 3D
+                    # Cilindro Domo 3D con Z acelerado
                     num_capas = PC.DOMO_NUM_CAPAS
                     z_por_capa = PC.DOMO_Z_POR_CAPA_MM
+                    capas_base = PC.DOMO_CAPAS_BASE
+                    z_aceleracion = PC.DOMO_Z_ACELERACION
+                    z_acum = 0.0
+                    capas_domo = max(1, num_capas - capas_base)
                     for capa in range(num_capas):
                         g.comment(f"--- Domo Capa {capa + 1}/{num_capas} ---")
-                        z_actual = self.z_print + (capa * z_por_capa)
                         if capa > 0:
-                            g.move_z(z_actual)
+                            if capa <= capas_base:
+                                # Capas base: Z uniforme
+                                z_acum += z_por_capa
+                            else:
+                                # Capas domo: Z acelerado
+                                idx_domo = capa - capas_base
+                                t = idx_domo / capas_domo
+                                z_acum += z_por_capa * (1.0 + z_aceleracion * (t ** 2))
+                            g.move_z(self.z_print + z_acum)
                         path_capa = pg.generar_domo_capa(capa, num_capas)
                         self._path_to_gcode(g, path_capa)
+                        g.blank()
+                        
+                    if PC.DOMO_DEMO_ARCOS:
+                        g.comment("--- Demostracion Arcos 3D Convexos ---")
+                        path_arcos = pg.generar_arcos_3d_demo()
+                        # El base_z es la altura final del domo
+                        z_final_domo = self.z_print + z_acum
+                        self._path_to_gcode(g, path_arcos, base_z=z_final_domo)
                         g.blank()
                 elif "cono" in p_lower and "estrella" in p_lower:
                     # Conos Estrella 3D
@@ -365,7 +391,7 @@ class GCodeGenerator:
 
         return g.build(), metadata
 
-    def _path_to_gcode(self, g, path):
+    def _path_to_gcode(self, g, path, base_z=None):
         """
         Convierte un path de segmentos a comandos G-Code.
         Cada segmento: primer punto = travel, resto = extrude.
@@ -373,18 +399,28 @@ class GCodeGenerator:
         se trasladan a (cx, cy) del alfajor en la cama.
         X se niega para corregir el espejo entre la vista previa
         (pantalla) y la orientacion fisica de la impresora.
+        Si base_z se provee y el punto tiene un offset Z, genera 3D move.
         """
         for segment in path:
             if len(segment) < 2:
                 continue
+            
+            def get_z(pt):
+                return base_z + pt[2] if base_z is not None and len(pt) > 2 else None
+
             # Travel al primer punto del segmento
-            x0 = self.cx - segment[0][0]
-            y0 = self.cy + segment[0][1]
-            g.travel(x0, y0)
+            pt0 = segment[0]
+            x0 = self.cx - pt0[0]
+            y0 = self.cy + pt0[1]
+            z0 = get_z(pt0)
+            g.travel(x0, y0, z=z0)
             
             # Extrude por el resto del segmento
-            for px, py in segment[1:]:
-                g.extrude_to(self.cx - px, self.cy + py)
+            for pt in segment[1:]:
+                px = self.cx - pt[0]
+                py = self.cy + pt[1]
+                pz = get_z(pt)
+                g.extrude_to(px, py, z=pz)
 
 
 # ============================================================

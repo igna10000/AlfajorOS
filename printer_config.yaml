@@ -97,10 +97,15 @@ cilindro:
 
 # === Cilindro Domo 3D ===
 cilindro_domo:
-  num_capas: 7
-  z_por_capa_mm: 1.5
+  num_capas: 9
+  z_por_capa_mm: 2.5
   capas_base: 3
-  reduccion_radio: 1.0
+  convexidad: 2.5
+  z_aceleracion_domo: 0.5
+  demo_arcos: true
+  demo_arcos_num: 4
+  demo_arcos_radio: 27.0
+  demo_arcos_z_mm: 3.0
 
 # === Conos Estrella 3D ===
 conos_estrella:
