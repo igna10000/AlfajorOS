@@ -13,22 +13,22 @@ alfajor:
   matriz_centros:
   - - 57.0
     - 65.0
-    - 6.0
+    - 4.6
   - - 127.0
     - 62.0
-    - 7.0
+    - 3.8
   - - 195.0
     - 63.0
-    - 8.0
-  - - 54.0
-    - 133.0
-    - 7.0
-  - - 121.0
-    - 132.0
-    - 7.0
-  - - 189.0
-    - 132.0
-    - 8.0
+    - 3.0
+  - - 61.0
+    - 129.0
+    - 2.0
+  - - 125.0
+    - 129.0
+    - 4.0
+  - - 196.0
+    - 127.0
+    - 4.0
   - - 53.0
     - 203.0
     - 6.0
@@ -94,4 +94,31 @@ imagen:
 cilindro:
   num_capas: 7
   z_por_capa_mm: 1.5
+
+# === Cilindro Domo 3D ===
+cilindro_domo:
+  num_capas: 7
+  z_por_capa_mm: 1.5
+  capas_base: 3
+  reduccion_radio: 1.0
+
+# === Conos Estrella 3D ===
+conos_estrella:
+  num_capas: 8
+  z_por_capa_mm: 1.5
+  num_conos: 4
+  radio_cono_base: 0.35
+  offset_cono: 0.55
+
+# === Cilindro Escalonado 3D ===
+cilindro_escalonado:
+  num_capas: 9
+  z_por_capa_mm: 1.5
+  num_escalones: 3
+  reduccion_por_escalon: 0.7
+
+# === Servo (Tapa) ===
+servo:
+  angulo_abierto: 120
+  angulo_cerrado: 128
 

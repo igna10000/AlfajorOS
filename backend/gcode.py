@@ -224,10 +224,10 @@ class GCodeGenerator:
 
         if purga_inicial_mm > 0:
             g.comment("Purga inicial")
-            g.set_servo(20)
+            g.set_servo(PC.SERVO_ANGULO_ABIERTO)
             g.e_total += purga_inicial_mm
             g.raw(f"G1 E{g.e_total:.4f} F600")
-            g.set_servo(130)
+            g.set_servo(PC.SERVO_ANGULO_CERRADO)
             g.reset_extruder()
             g.retracted = True  # Post-purga: considerar retraido
             g.blank()
@@ -261,15 +261,53 @@ class GCodeGenerator:
             g.current_y = self.cy
             g.current_z = self.z_print
             
-            # Abrir servo a 20 grados durante toda la galleta
-            g.set_servo(20)
+            # Abrir servo durante toda la galleta
+            g.set_servo(PC.SERVO_ANGULO_ABIERTO)
             g.blank()
             
             # Patron
             if patron:
                 g.comment(f"=== Patron: {patron} ===")
                 pg = PathGenerator(self.radio, grosor_pct)
-                if "cilindro" in patron.lower():
+                p_lower = patron.lower()
+                if "domo" in p_lower:
+                    # Cilindro Domo 3D
+                    num_capas = PC.DOMO_NUM_CAPAS
+                    z_por_capa = PC.DOMO_Z_POR_CAPA_MM
+                    for capa in range(num_capas):
+                        g.comment(f"--- Domo Capa {capa + 1}/{num_capas} ---")
+                        z_actual = self.z_print + (capa * z_por_capa)
+                        if capa > 0:
+                            g.move_z(z_actual)
+                        path_capa = pg.generar_domo_capa(capa, num_capas)
+                        self._path_to_gcode(g, path_capa)
+                        g.blank()
+                elif "cono" in p_lower and "estrella" in p_lower:
+                    # Conos Estrella 3D
+                    num_capas = PC.CONOS_NUM_CAPAS
+                    z_por_capa = PC.CONOS_Z_POR_CAPA_MM
+                    for capa in range(num_capas):
+                        g.comment(f"--- Conos Estrella Capa {capa + 1}/{num_capas} ---")
+                        z_actual = self.z_print + (capa * z_por_capa)
+                        if capa > 0:
+                            g.move_z(z_actual)
+                        path_capa = pg.generar_conos_capa(capa, num_capas)
+                        self._path_to_gcode(g, path_capa)
+                        g.blank()
+                elif "escalonado" in p_lower:
+                    # Cilindro Escalonado 3D
+                    num_capas = PC.ESCALONADO_NUM_CAPAS
+                    z_por_capa = PC.ESCALONADO_Z_POR_CAPA_MM
+                    for capa in range(num_capas):
+                        g.comment(f"--- Escalonado Capa {capa + 1}/{num_capas} ---")
+                        z_actual = self.z_print + (capa * z_por_capa)
+                        if capa > 0:
+                            g.move_z(z_actual)
+                        path_capa = pg.generar_escalonado_capa(capa, num_capas)
+                        self._path_to_gcode(g, path_capa)
+                        g.blank()
+                elif "cilindro" in p_lower:
+                    # Cilindro 3D original
                     num_capas = PC.CILINDRO_NUM_CAPAS
                     z_por_capa = PC.CILINDRO_Z_POR_CAPA_MM
                     path_capa = pg.generar_cilindro_capa()
@@ -301,8 +339,8 @@ class GCodeGenerator:
                 self._path_to_gcode(g, path_img)
                 g.blank()
                 
-            # Cerrar servo a 130 grados al finalizar la galleta
-            g.set_servo(130)
+            # Cerrar servo al finalizar la galleta
+            g.set_servo(PC.SERVO_ANGULO_CERRADO)
             g.blank()
                 
             # Al terminar el alfajor, si hay más, forzamos retracción para el viaje
@@ -316,7 +354,7 @@ class GCodeGenerator:
         # Footer
         g.comment("=== Fin ===")
         g.park(fin_retraccion_mm)
-        g.set_servo(130)
+        g.set_servo(PC.SERVO_ANGULO_CERRADO)
         g.blank()
 
         metadata = {

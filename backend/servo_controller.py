@@ -31,21 +31,25 @@ except Exception as e:
     servo = None
     print(f"Advertencia: No se pudo inicializar el servo en GPIO 19. Detalles: {e}")
 
+servo_lock = threading.Lock()
+
 def _set_angle_thread(angle):
     if servo is not None:
-        try:
-            angle = max(0, min(180, angle))
-            servo.angle = angle
-        except Exception as e:
-            print(f"Error moviendo servo: {e}")
+        with servo_lock:
+            try:
+                angle = max(0, min(180, angle))
+                servo.angle = angle
+                time.sleep(0.6)  # Esperar a que el servo alcance la posición
+                servo.detach()   # Detener la señal PWM para evitar que el servo oscile
+            except Exception as e:
+                print(f"Error moviendo servo: {e}")
     else:
         print(f"[Simulación] Servo movido a {angle} grados.")
 
 def set_servo_angle(angle):
     """
     Mueve el servo SG90 al ángulo especificado de forma asíncrona.
-    - 20 grados: Tapa abierta (solo al extruir).
-    - 130 grados: Tapa cerrada (resto del tiempo).
+    Los ángulos de apertura y cierre se configuran desde printer_config.yaml.
     """
     thread = threading.Thread(target=_set_angle_thread, args=(angle,), daemon=True)
     thread.start()

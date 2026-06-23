@@ -101,6 +101,29 @@ class PrinterConfig:
     CILINDRO_NUM_CAPAS = _get(_cfg, "cilindro", "num_capas", default=5)
     CILINDRO_Z_POR_CAPA_MM = _get(_cfg, "cilindro", "z_por_capa_mm", default=2.0)
 
+    # === Cilindro Domo 3D ===
+    DOMO_NUM_CAPAS = _get(_cfg, "cilindro_domo", "num_capas", default=7)
+    DOMO_Z_POR_CAPA_MM = _get(_cfg, "cilindro_domo", "z_por_capa_mm", default=1.5)
+    DOMO_CAPAS_BASE = _get(_cfg, "cilindro_domo", "capas_base", default=4)
+    DOMO_REDUCCION_RADIO = _get(_cfg, "cilindro_domo", "reduccion_radio", default=0.85)
+
+    # === Conos Estrella 3D ===
+    CONOS_NUM_CAPAS = _get(_cfg, "conos_estrella", "num_capas", default=8)
+    CONOS_Z_POR_CAPA_MM = _get(_cfg, "conos_estrella", "z_por_capa_mm", default=1.5)
+    CONOS_NUM_CONOS = _get(_cfg, "conos_estrella", "num_conos", default=4)
+    CONOS_RADIO_CONO_BASE = _get(_cfg, "conos_estrella", "radio_cono_base", default=0.35)
+    CONOS_OFFSET_CONO = _get(_cfg, "conos_estrella", "offset_cono", default=0.55)
+
+    # === Cilindro Escalonado 3D ===
+    ESCALONADO_NUM_CAPAS = _get(_cfg, "cilindro_escalonado", "num_capas", default=9)
+    ESCALONADO_Z_POR_CAPA_MM = _get(_cfg, "cilindro_escalonado", "z_por_capa_mm", default=1.5)
+    ESCALONADO_NUM_ESCALONES = _get(_cfg, "cilindro_escalonado", "num_escalones", default=3)
+    ESCALONADO_REDUCCION_POR_ESCALON = _get(_cfg, "cilindro_escalonado", "reduccion_por_escalon", default=0.7)
+
+    # === Servo (Tapa) ===
+    SERVO_ANGULO_ABIERTO = _get(_cfg, "servo", "angulo_abierto", default=100)
+    SERVO_ANGULO_CERRADO = _get(_cfg, "servo", "angulo_cerrado", default=120)
+
     @classmethod
     def reload(cls):
         """Recarga la configuracion desde el YAML."""
@@ -159,6 +182,25 @@ class PrinterConfig:
         # === Cilindro 3D ===
         cls.CILINDRO_NUM_CAPAS = _get(_cfg, "cilindro", "num_capas", default=5)
         cls.CILINDRO_Z_POR_CAPA_MM = _get(_cfg, "cilindro", "z_por_capa_mm", default=2.0)
+        # === Cilindro Domo 3D ===
+        cls.DOMO_NUM_CAPAS = _get(_cfg, "cilindro_domo", "num_capas", default=7)
+        cls.DOMO_Z_POR_CAPA_MM = _get(_cfg, "cilindro_domo", "z_por_capa_mm", default=1.5)
+        cls.DOMO_CAPAS_BASE = _get(_cfg, "cilindro_domo", "capas_base", default=4)
+        cls.DOMO_REDUCCION_RADIO = _get(_cfg, "cilindro_domo", "reduccion_radio", default=0.85)
+        # === Conos Estrella 3D ===
+        cls.CONOS_NUM_CAPAS = _get(_cfg, "conos_estrella", "num_capas", default=8)
+        cls.CONOS_Z_POR_CAPA_MM = _get(_cfg, "conos_estrella", "z_por_capa_mm", default=1.5)
+        cls.CONOS_NUM_CONOS = _get(_cfg, "conos_estrella", "num_conos", default=4)
+        cls.CONOS_RADIO_CONO_BASE = _get(_cfg, "conos_estrella", "radio_cono_base", default=0.35)
+        cls.CONOS_OFFSET_CONO = _get(_cfg, "conos_estrella", "offset_cono", default=0.55)
+        # === Cilindro Escalonado 3D ===
+        cls.ESCALONADO_NUM_CAPAS = _get(_cfg, "cilindro_escalonado", "num_capas", default=9)
+        cls.ESCALONADO_Z_POR_CAPA_MM = _get(_cfg, "cilindro_escalonado", "z_por_capa_mm", default=1.5)
+        cls.ESCALONADO_NUM_ESCALONES = _get(_cfg, "cilindro_escalonado", "num_escalones", default=3)
+        cls.ESCALONADO_REDUCCION_POR_ESCALON = _get(_cfg, "cilindro_escalonado", "reduccion_por_escalon", default=0.7)
+        # === Servo (Tapa) ===
+        cls.SERVO_ANGULO_ABIERTO = _get(_cfg, "servo", "angulo_abierto", default=100)
+        cls.SERVO_ANGULO_CERRADO = _get(_cfg, "servo", "angulo_cerrado", default=120)
 
     @classmethod
     def save(cls):
@@ -219,6 +261,29 @@ class PrinterConfig:
                 'num_capas': int(cls.CILINDRO_NUM_CAPAS),
                 'z_por_capa_mm': float(cls.CILINDRO_Z_POR_CAPA_MM),
             },
+            'cilindro_domo': {
+                'num_capas': int(cls.DOMO_NUM_CAPAS),
+                'z_por_capa_mm': float(cls.DOMO_Z_POR_CAPA_MM),
+                'capas_base': int(cls.DOMO_CAPAS_BASE),
+                'reduccion_radio': float(cls.DOMO_REDUCCION_RADIO),
+            },
+            'conos_estrella': {
+                'num_capas': int(cls.CONOS_NUM_CAPAS),
+                'z_por_capa_mm': float(cls.CONOS_Z_POR_CAPA_MM),
+                'num_conos': int(cls.CONOS_NUM_CONOS),
+                'radio_cono_base': float(cls.CONOS_RADIO_CONO_BASE),
+                'offset_cono': float(cls.CONOS_OFFSET_CONO),
+            },
+            'cilindro_escalonado': {
+                'num_capas': int(cls.ESCALONADO_NUM_CAPAS),
+                'z_por_capa_mm': float(cls.ESCALONADO_Z_POR_CAPA_MM),
+                'num_escalones': int(cls.ESCALONADO_NUM_ESCALONES),
+                'reduccion_por_escalon': float(cls.ESCALONADO_REDUCCION_POR_ESCALON),
+            },
+            'servo': {
+                'angulo_abierto': int(cls.SERVO_ANGULO_ABIERTO),
+                'angulo_cerrado': int(cls.SERVO_ANGULO_CERRADO),
+            },
         }
         # Escribir con comentarios de cabecera
         header = (
@@ -239,8 +304,12 @@ class PrinterConfig:
                 'serial': '# === Serial ===',
                 'imagen': '# === Imagen ===',
                 'cilindro': '# === Cilindro 3D ===',
+                'cilindro_domo': '# === Cilindro Domo 3D ===',
+                'conos_estrella': '# === Conos Estrella 3D ===',
+                'cilindro_escalonado': '# === Cilindro Escalonado 3D ===',
+                'servo': '# === Servo (Tapa) ===',
             }
-            for key in ['alfajor', 'impresion', 'extrusor', 'viaje', 'linea', 'serial', 'imagen', 'cilindro']:
+            for key in ['alfajor', 'impresion', 'extrusor', 'viaje', 'linea', 'serial', 'imagen', 'cilindro', 'cilindro_domo', 'conos_estrella', 'cilindro_escalonado', 'servo']:
                 f.write(f"{section_comments[key]}\n")
                 yaml.dump({key: data[key]}, f, default_flow_style=False,
                           allow_unicode=True, sort_keys=False)
@@ -296,7 +365,7 @@ class SystemConfig:
         "Espiral clasica", "Zigzag horizontal", "Circulos concentricos",
         "Rejilla cruzada", "Estrella", "Corazon",
         "Ondas paralelas", "Relleno completo", "Borde decorativo",
-        "Cilindro 3D",
+        "Cilindro 3D", "Cilindro Domo", "Conos Estrella", "Cilindro Escalonado",
     ]
 
     PATRONES_PRO = [

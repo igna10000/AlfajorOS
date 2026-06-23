@@ -452,6 +452,19 @@ class AlfajorCanvas(QWidget):
         alfajor_top_cy = cy - h_alfajor / 2
         crema_surface_cy = alfajor_top_cy - crema_height * math.sin(tilt_rad)
 
+        patron = config["patron"].lower() if config["patron"] else ""
+
+        # Detectar si es una figura 3D multicapa
+        is_3d = any(k in patron for k in ["cilindro", "domo", "cono", "escalonado"])
+
+        if is_3d and tilt > 2:
+            self._dibujar_crema_3d_multicapa(
+                painter, cx, crema_surface_cy, scale, tilt,
+                progreso, config, radio_crema, grosor_linea
+            )
+            return
+
+        # --- Renderizado plano original (patrones 2D) ---
         painter.save()
         if tilt > 2:
             t = QTransform()
@@ -488,6 +501,96 @@ class AlfajorCanvas(QWidget):
                            Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
         painter.setPen(highlight_pen)
         self._dibujar_path(painter, cx, crema_surface_cy - 1.5, radio_crema, progreso, config)
+
+        painter.restore()
+
+    def _dibujar_crema_3d_multicapa(self, painter, cx, base_cy, scale, tilt,
+                                     progreso, config, radio_crema, grosor_linea):
+        """Renderizado 3D multicapa para figuras como Cilindro, Domo, Conos y Escalonado."""
+        from backend.config import PrinterConfig as PC
+        from backend.path_generator import PathGenerator
+
+        patron = config["patron"].lower()
+        r = 35 * scale
+        tilt_rad = math.radians(tilt)
+        ry = r * math.cos(tilt_rad) if tilt > 2 else r
+
+        # Determinar parámetros según la figura
+        if "domo" in patron:
+            num_capas = PC.DOMO_NUM_CAPAS
+        elif "cono" in patron and "estrella" in patron:
+            num_capas = PC.CONOS_NUM_CAPAS
+        elif "escalonado" in patron:
+            num_capas = PC.ESCALONADO_NUM_CAPAS
+        else:
+            num_capas = PC.CILINDRO_NUM_CAPAS
+
+        # Desplazamiento visual por capa (efecto de altura)
+        layer_visual_offset = 4.0 * scale  # pixels entre capas
+        total_height = num_capas * layer_visual_offset
+
+        # Cuántas capas mostrar según progreso
+        capas_visibles = max(1, int(num_capas * progreso / 100))
+
+        pg = PathGenerator(PC.ALFAJOR_RADIO_MM, config["grosor"])
+        px_per_mm = radio_crema / PC.ALFAJOR_RADIO_MM if PC.ALFAJOR_RADIO_MM > 0 else 1.0
+
+        painter.save()
+
+        for capa in range(capas_visibles):
+            # Posición Y de esta capa (más arriba = más alto en Z)
+            capa_cy = base_cy - capa * layer_visual_offset * math.sin(tilt_rad)
+
+            # Generar path de la capa
+            if "domo" in patron:
+                path_capa = pg.generar_domo_capa(capa, num_capas)
+            elif "cono" in patron and "estrella" in patron:
+                path_capa = pg.generar_conos_capa(capa, num_capas)
+            elif "escalonado" in patron:
+                path_capa = pg.generar_escalonado_capa(capa, num_capas)
+            else:
+                path_capa = pg.generar_cilindro_capa()
+
+            # Aplicar transformación de perspectiva para esta capa
+            painter.save()
+            t = QTransform()
+            t.translate(cx, capa_cy)
+            t.scale(1.0, max(ry / r, 0.3))
+            t.translate(-cx, -capa_cy)
+            painter.setTransform(t, True)
+
+            # Sombra lateral (profundidad)
+            if capa < capas_visibles - 1:
+                alpha_sombra = int(60 + (capa / max(1, num_capas)) * 80)
+                sombra_pen = QPen(QColor(200, 170, 120, alpha_sombra),
+                                 max(1, grosor_linea * 0.8),
+                                 Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
+                painter.setPen(sombra_pen)
+                painter.setBrush(Qt.NoBrush)
+                offset_sombra = layer_visual_offset * 0.5
+                self._render_path_raw(painter, path_capa, cx,
+                                      capa_cy + offset_sombra, px_per_mm)
+
+            # Capa principal de crema
+            # Color más claro para capas superiores
+            brightness = min(255, 230 + int(capa * 3))
+            alpha_crema = max(180, 245 - capa * 5)
+            color_crema = QColor(brightness, brightness - 10, brightness - 35, alpha_crema)
+            pen = QPen(color_crema, grosor_linea, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
+            painter.setPen(pen)
+            painter.setBrush(Qt.NoBrush)
+            self._render_path_raw(painter, path_capa, cx, capa_cy, px_per_mm)
+
+            # Highlight sutil en la capa superior
+            if capa == capas_visibles - 1:
+                highlight_pen = QPen(QColor(255, 255, 252, 120),
+                                    max(2, grosor_linea * 0.5),
+                                    Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
+                painter.setPen(highlight_pen)
+                self._render_path_raw(painter, path_capa, cx,
+                                      capa_cy - 1.5, px_per_mm)
+
+            painter.restore()
 
         painter.restore()
 

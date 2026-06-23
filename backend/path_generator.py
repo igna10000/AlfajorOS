@@ -128,6 +128,9 @@ class PathGenerator:
             return self._p_circulos()
         elif "rejilla" in p:
             return self._p_rejilla()
+        elif "estrella" in p and "cono" in p:
+            # Conos Estrella: preview = 4 circulos en puntos cardinales
+            return self._p_conos_preview()
         elif "estrella" in p:
             return self._p_estrella()
         elif "corazon" in p:
@@ -138,8 +141,14 @@ class PathGenerator:
             return self._p_relleno()
         elif "borde" in p:
             return self._p_borde()
+        elif "domo" in p:
+            # Cilindro Domo: preview = borde circular
+            return self._p_borde()
+        elif "escalonado" in p:
+            # Cilindro Escalonado: preview = circulos concentricos (3 escalones)
+            return self._p_escalonado_preview()
         elif "cilindro" in p:
-            # Para preview: mostrar el borde circular (una capa)
+            # Cilindro original: preview = borde circular (una capa)
             return self._p_borde()
         else:
             return self._p_espiral()
@@ -162,6 +171,76 @@ class PathGenerator:
         Retorna el mismo formato que generar(): list[list[tuple[float,float]]]
         """
         return self._p_borde()
+
+    def generar_domo_capa(self, capa, total_capas):
+        """Genera el path de UNA capa del cilindro domo.
+        Las capas < capas_base usan radio completo (cilindro recto).
+        Las capas superiores siguen un perfil de media esfera (coseno)
+        para producir un cierre curvo y redondeado tipo iglú.
+        Perfil: r = R × cos(t × π/2) donde t va de 0.0 a 1.0
+        """
+        capas_base = PC.DOMO_CAPAS_BASE
+        if capa < capas_base:
+            # Capas cilíndricas: radio completo
+            radio_capa = self.radio
+        else:
+            # Capas de domo: perfil de media esfera (coseno)
+            capas_domo = total_capas - capas_base
+            idx_domo = capa - capas_base  # 0, 1, 2, ...
+            # t progresa de (1/capas_domo) a 1.0
+            t = (idx_domo + 1) / capas_domo
+            # Perfil hemisférico: cos(0)=1 (radio completo) → cos(π/2)=0 (cerrado)
+            radio_capa = self.radio * math.cos(t * math.pi / 2)
+            # Mínimo ~1mm para que la boquilla pueda extruir
+            radio_capa = max(radio_capa, 1.0)
+        return self._p_circulo_simple(radio_capa)
+
+    def generar_conos_capa(self, capa, total_capas):
+        """Genera el path de UNA capa de los 4 conos en estrella.
+        Cada cono se ubica en un punto cardinal y su radio decrece
+        linealmente de radio_cono_base a ~1mm en la última capa.
+        """
+        num_conos = PC.CONOS_NUM_CONOS
+        radio_base = PC.CONOS_RADIO_CONO_BASE * self.radio
+        offset = PC.CONOS_OFFSET_CONO * self.radio
+
+        # Radio decrece linealmente: capa 0 = radio_base, última capa = ~1mm
+        radio_min = 1.0  # mm mínimo para la punta
+        if total_capas > 1:
+            factor = 1.0 - (capa / (total_capas - 1))
+        else:
+            factor = 1.0
+        radio_cono = radio_min + (radio_base - radio_min) * factor
+        radio_cono = max(radio_cono, radio_min)
+
+        segments = []
+        for i in range(num_conos):
+            # Puntos cardinales: 0=N, 1=E, 2=S, 3=O
+            angulo = math.radians(i * (360 / num_conos) - 90)
+            cx = offset * math.cos(angulo)
+            cy = offset * math.sin(angulo)
+            # Generar circulo alrededor del centro del cono
+            puntos = 36
+            segment = []
+            for j in range(puntos + 1):
+                a = math.radians(j * (360 / puntos))
+                x = cx + radio_cono * math.cos(a)
+                y = cy + radio_cono * math.sin(a)
+                segment.append((x, y))
+            segments.append(segment)
+        return segments
+
+    def generar_escalonado_capa(self, capa, total_capas):
+        """Genera el path de UNA capa del cilindro escalonado.
+        El radio decrece por escalón: radio = radio_alfajor × reduccion^n
+        donde n es el número de escalón actual.
+        """
+        num_escalones = PC.ESCALONADO_NUM_ESCALONES
+        reduccion = PC.ESCALONADO_REDUCCION_POR_ESCALON
+        capas_por_escalon = max(1, total_capas // num_escalones)
+        escalon_actual = min(capa // capas_por_escalon, num_escalones - 1)
+        radio_capa = self.radio * (reduccion ** escalon_actual)
+        return self._p_circulo_simple(radio_capa)
 
     # ========================================================
     # Patrones
@@ -359,6 +438,47 @@ class PathGenerator:
             segment.append((x, y))
 
         return [segment]
+
+    def _p_circulo_simple(self, radio):
+        """Genera un círculo cerrado simple de radio dado. Usado por figuras 3D."""
+        puntos = 72
+        segment = []
+        for i in range(puntos + 1):
+            ang = math.radians(i * (360 / puntos))
+            x = radio * math.cos(ang)
+            y = radio * math.sin(ang)
+            segment.append((x, y))
+        return [segment]
+
+    def _p_conos_preview(self):
+        """Preview 2D para Conos Estrella: 4 círculos en puntos cardinales."""
+        num_conos = PC.CONOS_NUM_CONOS
+        radio_base = PC.CONOS_RADIO_CONO_BASE * self.radio
+        offset = PC.CONOS_OFFSET_CONO * self.radio
+        segments = []
+        for i in range(num_conos):
+            angulo = math.radians(i * (360 / num_conos) - 90)
+            cx = offset * math.cos(angulo)
+            cy = offset * math.sin(angulo)
+            puntos = 36
+            segment = []
+            for j in range(puntos + 1):
+                a = math.radians(j * (360 / puntos))
+                x = cx + radio_base * math.cos(a)
+                y = cy + radio_base * math.sin(a)
+                segment.append((x, y))
+            segments.append(segment)
+        return segments
+
+    def _p_escalonado_preview(self):
+        """Preview 2D para Cilindro Escalonado: 3 círculos concéntricos."""
+        num_escalones = PC.ESCALONADO_NUM_ESCALONES
+        reduccion = PC.ESCALONADO_REDUCCION_POR_ESCALON
+        segments = []
+        for e in range(num_escalones):
+            radio_e = self.radio * (reduccion ** e)
+            segments.extend(self._p_circulo_simple(radio_e))
+        return segments
 
     # ========================================================
     # Texto

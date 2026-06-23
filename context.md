@@ -62,5 +62,12 @@ AlfajorOS/
 - **Control Físico de Tapa (Servo SG90)**: Integración de la librería `gpiozero` (`lgpio`) en `backend/servo_controller.py` mediante el GPIO 19 de la Raspberry Pi. El servo opera a 20° (abierto) durante el tiempo total de extrusión de la galleta y 130° (cerrado) en estados de viaje o reposo.
 - **Sincronización Física Estricta (M400 y Serial Timeouts)**: Solución al desfase entre la interfaz visual de Python y los motores físicos. El sistema intercepta el comando `M280` localmente e inyecta `M400` para obligar a Python a esperar la finalización de los movimientos de Marlin. Se rediseñó `printer.py` para utilizar *timeouts asíncronos adaptativos* (3600s para M400/G28) que se reinician de manera segura al recibir señales `echo: busy: processing` desde la placa base.
 
+- **3 Nuevas Figuras 3D Decorativas**: Tres figuras 3D multicapa disponibles junto al Cilindro original:
+  - **Cilindro Domo**: Cilindro con cúpula/domo. Las capas base son circulares de radio completo; las capas superiores reducen progresivamente su radio (`reduccion_radio`) simulando un iglú que se cierra.
+  - **Conos Estrella**: 4 conos en los puntos cardinales (N, S, E, O) del alfajor. Cada cono es una pila de círculos cuyo radio decrece linealmente desde `radio_cono_base` hasta ~1mm, formando 4 montañitas en punta.
+  - **Cilindro Escalonado**: Pirámide escalonada tipo "torta de casamiento". El radio decrece en escalones discretos (`reduccion_por_escalon^n`), cada escalón abarca N capas.
+  - Todos los parámetros son configurables desde `printer_config.yaml` (secciones `cilindro_domo`, `conos_estrella`, `cilindro_escalonado`).
+  - Previsualización 3D completa con capas apiladas con profundidad visual en `AlfajorCanvas`.
+
 ---
 *NOTA AL AGENTE: Debes modificar y actualizar este archivo cada vez que el usuario agregue una nueva característica sustancial o modifique la arquitectura, para que este contexto se mantenga "vivo" y preciso.*
