@@ -179,6 +179,12 @@ class MainView(QMainWindow):
         """)
         self.btn_modo.setCheckable(True)
         self.btn_modo.clicked.connect(self._on_toggle_modo)
+        
+        sp_modo = self.btn_modo.sizePolicy()
+        sp_modo.setRetainSizeWhenHidden(True)
+        self.btn_modo.setSizePolicy(sp_modo)
+        self.btn_modo.hide()
+        
         left_layout.addWidget(self.btn_modo)
         self.modo_serie = False
 
@@ -200,6 +206,12 @@ class MainView(QMainWindow):
             }
         """)
         self.btn_motores.clicked.connect(self._on_release_motors)
+        
+        sp_mot = self.btn_motores.sizePolicy()
+        sp_mot.setRetainSizeWhenHidden(True)
+        self.btn_motores.setSizePolicy(sp_mot)
+        self.btn_motores.hide()
+        
         left_layout.addWidget(self.btn_motores)
 
         # Botón PRO (al final de la columna)
@@ -220,6 +232,12 @@ class MainView(QMainWindow):
             }
         """)
         self.btn_pro.clicked.connect(self._on_modo_pro)
+        
+        sp_pro = self.btn_pro.sizePolicy()
+        sp_pro.setRetainSizeWhenHidden(True)
+        self.btn_pro.setSizePolicy(sp_pro)
+        self.btn_pro.hide()
+        
         left_layout.addWidget(self.btn_pro)
 
         self._left_col.setFixedWidth(100)
@@ -301,6 +319,9 @@ class MainView(QMainWindow):
     def _toggle_jog(self):
         v = not self.jog_control.isVisible()
         self.jog_control.setVisible(v)
+        self.btn_modo.setVisible(v)
+        self.btn_motores.setVisible(v)
+        self.btn_pro.setVisible(v)
 
     def _insert_after_recursive(self, layout, target, new_widget):
         for i in range(layout.count()):
