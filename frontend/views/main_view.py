@@ -275,6 +275,7 @@ class MainView(QMainWindow):
         self.jog_control.z0_set.connect(self._on_z0_set)
         self.jog_control.homed_all.connect(self._on_homed_all)
         self.jog_control.home_saved.connect(self._on_home_saved)
+        self.jog_control.btn_close.clicked.connect(self._toggle_jog)
         self.jog_control.hide()
         r_layout.addWidget(self.jog_control)
         r_layout.addStretch()
@@ -347,6 +348,13 @@ class MainView(QMainWindow):
     def _on_home_saved(self, x, y, z):
         self._manual_home = (x, y, z)
         self._manual_z0_set = True
+        
+        # Guardar en config.yaml (similar a calibracion de modo serie)
+        from backend.config import PrinterConfig as PC
+        PC.ALFAJOR_CENTRO_X = x
+        PC.ALFAJOR_CENTRO_Y = y
+        PC.ALFAJOR_CENTRO_Z = z
+        PC.save()
 
     def _ocultar_botones_ui(self):
         """Elimina botones de Texto, Figura y PRO del .ui (reemplazados por columna)."""

@@ -135,11 +135,19 @@ class JogControlWidget(QWidget):
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(10)
 
-        # Título
+        top_layout = QHBoxLayout()
+        
         lbl_titulo = QLabel("MOVIMIENTO")
         lbl_titulo.setFont(QFont("Purisa", 11, QFont.Bold))
         lbl_titulo.setAlignment(Qt.AlignCenter)
-        main_layout.addWidget(lbl_titulo)
+        top_layout.addWidget(lbl_titulo)
+        
+        self.btn_close = QPushButton("✖")
+        self.btn_close.setFixedSize(30, 30)
+        self.btn_close.setStyleSheet("background-color: #F44336; color: white; font-weight: bold; border-radius: 15px; border: none;")
+        top_layout.addWidget(self.btn_close)
+        
+        main_layout.addLayout(top_layout)
 
         # Paso (Step size)
         self.combo_paso = QComboBox()
